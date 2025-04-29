@@ -1,0 +1,13 @@
+/* src/pages/AdminDashboard.css */
+.admin-dashboard {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  /* Ensure the dashboard takes full viewport height */
+  }
+  
+  main {
+    flex: 1; /* Grow to fill remaining space */
+    padding: 20px;
+    background-color: #f5f5f5; /* Optional: Add a background color */
+  }

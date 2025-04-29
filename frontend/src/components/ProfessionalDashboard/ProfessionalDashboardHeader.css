@@ -1,0 +1,151 @@
+.header {
+    background-color: #fff;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    width: 100%;
+    border-bottom: 1px solid #e5e7eb;
+    width: 100vw;
+    
+    
+  }
+
+  
+  .header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    height: 70px;
+  }
+  
+  /* Brand section */
+  .brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .brand-name {
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, #2563eb, #4f46e5);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+    line-height: 1;
+  }
+  
+  .brand-type {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #64748b;
+ 
+    margin-top: 2px;
+    background-color: #f1f5f9;
+ 
+    border-radius: 3px;
+  }
+  
+  /* Navigation */
+  .navigation {
+    flex: 1;
+    margin: 0 2rem;
+  }
+  
+  .nav-list {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0.5rem;
+    justify-content: center;
+    height: 100%
+  }
+  
+  .nav-item {
+    position: relative;
+    height: 70px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    
+    
+    color: #64748b;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+     
+
+    transition: all 0.2s ease-in-out;
+
+  }
+  
+  .nav-link:hover {
+    color: #2563eb;
+    background-color: #f1f5f9;
+    transform: translateY(-2px);
+  }
+  .nav-item.active .nav-link {
+    color: #1d4ed8;
+    background-color: #e0f2fe;
+    font-weight: 700;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.1);
+  }
+  
+  .nav-item.active::after {
+    background-color: #1d4ed8;
+  }
+  
+  .nav-icon {
+    font-size: 1.2rem;
+  }
+  
+  .nav-text {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  /* Logout button */
+  .user-actions {
+    display: flex;
+    align-items: center;
+  }
+  
+  .logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    background-color: #f8fafc;
+    color: #ef4444;
+    border: 1px solid #fee2e2;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .logout-btn:hover {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.2);
+  }
+  
+  .btn-icon {
+    font-size: 1.1rem;
+  }
+  
+  

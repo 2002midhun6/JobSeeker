@@ -1,0 +1,231 @@
+.admin-verification-container {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  
+  h2 {
+    color: #333;
+    margin-bottom: 20px;
+  }
+  
+  .error-message {
+    color: red;
+    margin-bottom: 10px;
+  }
+  
+  .success-message {
+    color: green;
+    margin-bottom: 10px;
+  }
+  
+  .verification-list {
+    list-style: none;
+    
+    
+  }
+  
+  .verification-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9f9f9;
+    margin: 20px 0px;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    width: 100%; 
+   
+
+    
+    
+  }
+  
+  .professional-info h3 {
+    margin: 0 0 10px 0;
+  }
+  
+  .action-buttons button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 10px;
+  }
+  
+  
+  .verify-btn {
+    background: #28a745;
+    color: white;
+  }
+  
+  .verify-btn:hover {
+    background: #218838;
+  }
+  
+  .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  direction: ltr !important; /* Enforce LTR */
+}
+ 
+  
+  
+  .denial-modal {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    direction: ltr; /* Explicitly set LTR */
+  }
+  
+  .denial-reason-input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    height: 45px; /* new height suitable for input box */
+    direction: ltr;
+    text-align: left;
+  }
+  
+  .denial-modal h3 {
+    margin-bottom: 15px;
+    color: #333;
+  }
+  
+  
+  .modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+  }
+  
+  .cancel-btn {
+    background-color: #6c757d;
+    color: #ffffff;
+  }
+  
+  .cancel-btn:hover {
+    background-color: #5a6268;
+  }
+  
+  .deny-btn {
+    background-color: #dc3545;
+    color: #ffffff;
+  }
+  
+  .deny-btn:hover {
+    background-color: #c82333;
+  }
+  .deny-btn {
+    background: #dc3545;
+    color: white;
+  }
+  
+  .deny-btn:hover {
+    background: #c82333;
+  }
+  main {
+    flex: 1;
+    padding: 20px;
+    background-color: #f5f5f5;
+  }
+  /* Existing styles (add to your AdminVerification.css) */
+.spinner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+  
+  .spinner-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #28a745; /* Matches success button color */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* Ensure buttons are styled appropriately when disabled */
+  .verify-btn:disabled,
+  .deny-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    gap: 10px;
+  }
+  
+  .page-btn {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+  }
+  
+  .page-btn:hover:not(:disabled) {
+    background-color: #f0f0f0;
+  }
+  
+  .page-btn.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
+  
+  .page-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  
+  

@@ -1,0 +1,188 @@
+.professional-jobs-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh; /* Ensure consistent height */
+  }
+  
+  .search-bar {
+    margin-bottom: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .search-input {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+  
+  .search-input:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 5px rgba(40, 167, 69, 0.3);
+  }
+  
+  .search-input::placeholder {
+    color: #999;
+  }
+  
+  .tab-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap; /* Prevent tab buttons from breaking layout */
+  }
+  
+  .tab-btn {
+    padding: 10px 20px;
+    border: none;
+    background: #f1f1f1;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 16px;
+    transition: background 0.3s;
+  }
+  
+  .tab-btn.active {
+    background: #28a745;
+    color: white;
+  }
+  
+  .tab-btn:hover {
+    background: #e0e0e0;
+  }
+  
+  .error-message {
+    color: #dc3545;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  .loading-message,
+  .empty-message {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    min-height: 100px; /* Ensure consistent height for empty states */
+  }
+  
+  .tabs-content {
+    min-height: 400px; /* Prevent content area from collapsing */
+  }
+  
+  .tab-section {
+    margin-bottom: 30px;
+  }
+  
+  .tab-section h3 {
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    color: #846f6f;
+  }
+  
+  .project-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .project-item {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: box-shadow 0.3s;
+  }
+  
+  .project-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .project-item h4 {
+    margin: 0 0 10px;
+    font-size: 1.25em;
+    color: #28a745;
+  }
+  
+  .project-item p {
+    margin: 5px 0;
+    color: #555;
+  }
+  
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  
+  .complete-btn,
+  .cancel-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+  }
+  
+  .complete-btn {
+    background: #28a745;
+    color: white;
+  }
+  
+  .complete-btn:hover {
+    background: #218838;
+  }
+  
+  .cancel-btn {
+    background: #dc3545;
+    color: white;
+  }
+  
+  .cancel-btn:hover {
+    background: #c82333;
+  }
+  
+  .pending-payment {
+    color: #ffc107;
+    font-weight: bold;
+  }
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    gap: 10px;
+  }
+  
+  .page-btn {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+  }
+  
+  .page-btn:hover:not(:disabled) {
+    background-color: #f0f0f0;
+  }
+  
+  .page-btn.active {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+  }
+  
+  .page-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }

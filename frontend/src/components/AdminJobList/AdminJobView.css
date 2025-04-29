@@ -1,0 +1,130 @@
+.admin-jobs-container {
+    padding: 100px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .jobs-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .jobs-content h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+  }
+  
+  .search-bar {
+    margin-bottom: 20px;
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .tab-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .tab-btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    background: #0b0a0a;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  .tab-btn.active {
+    background: #007bff;
+    color: #cbb7b7;
+  }
+  
+  .tab-section {
+    margin-bottom: 30px;
+  }
+  
+  .tab-section h3 {
+    font-size: 20px;
+    margin-bottom: 15px;
+    color: #333;
+  }
+  
+  .job-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .job-item {
+    background: #f9f9f9;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border: 1px solid #eee;
+  }
+  
+  .job-item h4 {
+    margin: 0 0 10px;
+    font-size: 18px;
+    color: #007bff;
+  }
+  
+  .job-item p {
+    margin: 5px 0;
+    color: #555;
+  }
+  
+  .error-message {
+    color: #dc3545;
+    margin-bottom: 20px;
+  }
+  
+  .loading-message {
+    text-align: center;
+    color: #666;
+  }
+  
+  .empty-message {
+    color: #666;
+    font-style: italic;
+  }
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    gap: 10px;
+  }
+  
+  .page-btn {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+  }
+  
+  .page-btn:hover:not(:disabled) {
+    background-color: #f0f0f0;
+  }
+  
+  .page-btn.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
+  
+  .page-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }

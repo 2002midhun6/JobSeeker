@@ -1,0 +1,131 @@
+.client-pending-payments {
+   
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 100px;
+    margin-top: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  main {
+    flex: 1; /* Grow to fill remaining space */
+    padding: 20px;
+    background-color: #f5f5f5; /* Optional: Add a background color */
+  }
+  .client-pending-payments h2 {
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 24px;
+  }
+  
+  .client-pending-payments .error-message {
+    color: #dc3545;
+    padding: 10px;
+    margin-bottom: 20px;
+    background-color: rgba(220, 53, 69, 0.1);
+    border-radius: 4px;
+  }
+  
+  .client-pending-payments ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .client-pending-payments li {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .client-pending-payments li:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .client-pending-payments h4 {
+    margin: 0 0 15px;
+    color: #007bff;
+    font-size: 18px;
+  }
+  
+  .client-pending-payments p {
+    margin: 8px 0;
+    color: #333;
+  }
+  
+  .client-pending-payments button {
+    margin-top: 15px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    background-color: #28a745;
+    color: #fff;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+  }
+  
+  .client-pending-payments button:hover {
+    background-color: #218838;
+  }
+  
+  .client-pending-payments button:last-child {
+    background-color: #6c757d;
+    margin-top: 20px;
+  }
+  
+  .client-pending-payments button:last-child:hover {
+    background-color: #5a6268;
+  }
+  
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .client-pending-payments {
+      padding: 15px;
+    }
+    
+    .client-pending-payments li {
+      padding: 12px;
+    }
+    
+    .client-pending-payments button {
+      padding: 8px 16px;
+      font-size: 14px;
+      width: 100%;
+    }
+  }
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    gap: 10px;
+  }
+  
+  .page-btn {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+  }
+  
+  .page-btn:hover:not(:disabled) {
+    background-color: #f0f0f0;
+  }
+  
+  .page-btn.active {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+  }
+  
+  .page-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }

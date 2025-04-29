@@ -1,0 +1,105 @@
+/* src/pages/AdminUserManagement.css */
+.admin-user-management {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  
+  main {
+    flex: 1;
+    padding: 20px;
+    background-color: #f5f5f5;
+  }
+  
+  h1 {
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  .error-message {
+    color: red;
+    margin-bottom: 20px;
+  }
+  
+  .user-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .user-table th,
+  .user-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    color: #040404;
+  }
+  
+  .user-table th {
+    background-color: #1a237e;
+    color: rgb(212, 189, 189);
+  }
+  
+  .user-table tr:hover {
+    background-color: #5a4f4f;
+  }
+  
+  .block-button,
+  .unblock-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s;
+  }
+  
+  .block-button {
+    background-color: #ff4081;
+    color: white;
+  }
+  
+  .block-button:hover {
+    background-color: #e03570;
+  }
+  
+  .unblock-button {
+    background-color: #4caf50;
+    color: white;
+  }
+  
+  .unblock-button:hover {
+    background-color: #43a047;
+  }
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    gap: 10px;
+  }
+  
+  .page-btn {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+  }
+  
+  .page-btn:hover:not(:disabled) {
+    background-color: #f0f0f0;
+  }
+  
+  .page-btn.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
+  
+  .page-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
