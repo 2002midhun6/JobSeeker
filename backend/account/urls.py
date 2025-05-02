@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import RegisterView, LoginView, LogoutView,VerifyOTPView,ForgotPasswordView, ResetPasswordView,AcceptJobApplicationView, JobDetailView, RequestVerificationView,AdminVerifyProfessionalView,ProfessionalJobApplicationsView,SubmitReviewView,AdminJobsView
-from .views import CheckAuthView,BlockUnblockUserView,ListUsersView,ProfessionalProfileView,JobCreateView,OpenJobsListView,ApplyToJobView,ClientProjectsView,JobApplicationsListView,AdminVerificationRequestsView,VerifyPaymentView,ClientPendingPaymentsView
+from .views import CheckAuthView,BlockUnblockUserView,ListUsersView,ProfessionalProfileView,JobCreateView,OpenJobsListView,ApplyToJobView,ClientProjectsView,JobApplicationsListView,AdminVerificationRequestsView,VerifyPaymentView,ClientPendingPaymentsView,ClientTransactionHistoryView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -28,6 +28,8 @@ urlpatterns = [
     path('client-pending-payments/', ClientPendingPaymentsView.as_view(), name='client_pending_payments'),
     path('submit-review/',SubmitReviewView.as_view(), name='submit-review'),
     path('admin/jobs/', AdminJobsView.as_view(), name='admin-jobs'),
+    path('client/transactions/', ClientTransactionHistoryView.as_view(), name='client-transactions'),
+
 
 ]
 

@@ -1,13 +1,15 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useContext } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../../context/AuthContext'; // Adjust path
 import axios from 'axios';
-import './ClinetDashboardHeader.css'
+import './ClinetDashboardHeader.css';
 
 function ClientHeader() {
   const { dispatch } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -23,6 +25,28 @@ function ClientHeader() {
   const isActive = (path) => {
     return location.pathname === path ? 'active' : '';
   };
+
+  // Fetch transaction history
+  const fetchTransactions = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('http://localhost:8000/api/client/transactions/', {
+        withCredentials: true,
+      });
+      setTransactions(response.data.transactions || []);
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch transactions when component mounts or when navigating to transaction page
+  useEffect(() => {
+    if (location.pathname === '/client-transactions') {
+      fetchTransactions();
+    }
+  }, [location.pathname]);
 
   return (
     <header className="header">
@@ -58,7 +82,12 @@ function ClientHeader() {
                 <span className="nav-text">Pending Payment</span>
               </Link>
             </li>
-            
+            <li className={`nav-item ${isActive('/client-transactions')}`}>
+              <Link to="/client-transactions" className="nav-link">
+                <span className="nav-icon">💸</span>
+                <span className="nav-text">Transaction</span>
+              </Link>
+            </li>
           </ul>
         </nav>
         

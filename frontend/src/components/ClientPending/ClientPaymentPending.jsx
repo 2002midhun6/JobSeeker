@@ -60,7 +60,7 @@ function ClientPendingPayments() {
     }
 
     const filtered = payments.filter((payment) =>
-      payment.job_title?.toLowerCase().includes(searchQuery.toLowerCase())
+      payment.job_application?.job_title?.toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredPayments(filtered);
     setCurrentPage(1); // Reset page on search
@@ -95,7 +95,7 @@ function ClientPendingPayments() {
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_order_id: response.razorpay_order_id,
             razorpay_signature: response.razorpay_signature,
-            application_id: payment.application_id,
+            application_id: payment.job_application?.id || 'unknown', // Updated to use nested id
             payment_type: payment.payment_type,
           };
           console.log('Verification Payload:', payload);
@@ -227,8 +227,8 @@ function ClientPendingPayments() {
           <ul>
             {paginate(filteredPayments, currentPage).map((payment) => (
               <li key={payment.order_id}>
-                <h4>Job: {payment.job_title}</h4>
-                <p>Amount: ₹{payment.amount / 100}</p>
+                <h4>Job: {payment.job_application?.job_title || 'Unknown Job'}</h4>
+                <p>Amount: ₹{(payment.amount / 100).toFixed(2)}</p>
                 <p>Payment Type: {payment.payment_type}</p>
                 <button onClick={() => handlePayment(payment)}>Pay Now</button>
               </li>

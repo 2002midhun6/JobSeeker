@@ -482,6 +482,16 @@ class JobApplicationsListView(APIView):
             return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
+import razorpay
+import traceback
+import time
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .models import JobApplication, Job, Payment
+from django.conf import settings
+
 class AcceptJobApplicationView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -892,6 +902,7 @@ class SubmitReviewView(APIView):
 
         job_id = request.data.get('job_id')
         rating = request.data.get('rating')
+        review = request.data.get('review', '').strip()  # Get review, default to empty string
 
         if not job_id or not rating:
             return Response({'error': 'Job ID and rating are required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -903,24 +914,30 @@ class SubmitReviewView(APIView):
         except (ValueError, TypeError):
             return Response({'error': 'Invalid rating value'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Validate review length (optional, e.g., max 500 characters)
+        if len(review) > 500:
+            return Response({'error': 'Review cannot exceed 500 characters'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             job = Job.objects.get(job_id=job_id, client_id=user, status='Completed')
         except Job.DoesNotExist:
             return Response({'error': 'Job not found or not completed'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Save both rating and review
         job.rating = rating
+        job.review = review if review else None  # Save as None if empty
         job.save()
 
         # Update professional's avg_rating
         try:
-            application = JobApplication.objects.get(job_id=job, status='Completed')  # Fixed to 'Completed'
+            application = JobApplication.objects.get(job_id=job, status='Completed')
             professional_profile = ProfessionalProfile.objects.get(user=application.professional_id)
             professional_profile.update_avg_rating()
         except (JobApplication.DoesNotExist, ProfessionalProfile.DoesNotExist) as e:
-            print(f"Debug: Failed to update avg_rating: {str(e)}")  # Debug
+            print(f"Debug: Failed to update avg_rating: {str(e)}")
             pass
 
-        return Response({'message': 'Rating submitted successfully'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Rating and review submitted successfully'}, status=status.HTTP_200_OK)
 class AdminJobsView(APIView):
     permission_classes = [AllowAny]
 
@@ -942,3 +959,29 @@ class AdminJobsView(APIView):
             'active': active_serializer.data,
             'completed': completed_serializer.data
         }, status=status.HTTP_200_OK)
+class ClientTransactionHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            if request.user.role != 'client':
+                return Response(
+                    {'error': 'Only clients can view transaction history'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Fetch all payments associated with the client's jobs
+            client_jobs = Job.objects.filter(client_id=request.user)
+            job_applications = JobApplication.objects.filter(job_id__in=client_jobs).select_related('job_id', 'professional_id')
+            payments = Payment.objects.filter(job_application__in=job_applications).order_by('-created_at')
+
+            # Serialize the payments
+            serializer = PaymentSerializer(payments, many=True, context={'request': request})
+            return Response({'transactions': serializer.data}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Error in ClientTransactionHistoryView: {str(e)}")
+            return Response(
+                {'error': f'Internal server error: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

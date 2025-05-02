@@ -143,6 +143,7 @@ class Job(models.Model):
         blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
+    review = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return self.title

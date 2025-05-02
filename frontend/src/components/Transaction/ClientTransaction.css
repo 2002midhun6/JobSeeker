@@ -1,0 +1,50 @@
+.transactions-container {
+    padding: 150px;
+    max-width: 1200px;
+    margin-top: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .transactions-container h2 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    
+  }
+  
+  .transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #f9f9f9;
+    
+  }
+  
+  
+  .transactions-table th,
+  .transactions-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .transactions-table th {
+    background: #4CAF50;
+    color: white;
+    font-weight: 600;
+  }
+  
+  .transactions-table td {
+    color: #333;
+  }
+  
+  .transactions-table tr:hover {
+    background: #f1f1f1;
+  }
+  
+  .spinner-container {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+  }
+ 

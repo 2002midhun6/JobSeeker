@@ -8,7 +8,7 @@ import './ClientProject.css';
 function ClientProjects() {
   const authContext = React.useContext(AuthContext);
   const navigate = useNavigate();
-  const { user, isAuthenticated } = authContext || { user: null, isAuthenticated: false };
+  const { user, isAuthenticated, token } = authContext || { user: null, isAuthenticated: false, token: null };
 
   const [projects, setProjects] = useState({ pending: [], active: [], completed: [] });
   const [filteredProjects, setFilteredProjects] = useState({ pending: [], active: [], completed: [] });
@@ -18,18 +18,21 @@ function ClientProjects() {
   const [activeTab, setActiveTab] = useState('all');
   const [ratings, setRatings] = useState({});
   const [tempRating, setTempRating] = useState({});
+  const [tempReview, setTempReview] = useState({}); // New state for reviews
   const [currentPage, setCurrentPage] = useState({
     pending: 1,
     active: 1,
     completed: 1,
   });
-  const itemsPerPage = 5; // Number of projects per page
+  const itemsPerPage = 5;
 
   useEffect(() => {
     const fetchProjects = async () => {
+     
       try {
         const response = await axios.get('http://localhost:8000/api/client-project/', {
           withCredentials: true,
+          
         });
         const enrichedProjects = {
           pending: response.data.pending,
@@ -37,6 +40,7 @@ function ClientProjects() {
           completed: response.data.completed.map(project => ({
             ...project,
             rating: project.rating || null,
+            review: project.review || null, // Include review
           })),
         };
         setProjects(enrichedProjects);
@@ -58,7 +62,7 @@ function ClientProjects() {
     if (isAuthenticated && user && user.role === 'client') {
       fetchProjects();
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, token, navigate]);
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== 'client') {
@@ -67,10 +71,9 @@ function ClientProjects() {
   }, [user, isAuthenticated, navigate]);
 
   useEffect(() => {
-    console.log('Search Query:', searchQuery, 'Projects:', projects);
     if (!searchQuery.trim()) {
       setFilteredProjects(projects);
-      setCurrentPage({ pending: 1, active: 1, completed: 1 }); // Reset pages on search
+      setCurrentPage({ pending: 1, active: 1, completed: 1 });
       return;
     }
 
@@ -86,12 +89,12 @@ function ClientProjects() {
       active: filterProjects(projects.active),
       completed: filterProjects(projects.completed),
     });
-    setCurrentPage({ pending: 1, active: 1, completed: 1 }); // Reset pages on search
+    setCurrentPage({ pending: 1, active: 1, completed: 1 });
   }, [searchQuery, projects]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setCurrentPage((prev) => ({ ...prev, [tab]: 1 })); // Reset page for the new tab
+    setCurrentPage((prev) => ({ ...prev, [tab]: 1 }));
   };
 
   const handleSearchChange = (e) => {
@@ -102,8 +105,14 @@ function ClientProjects() {
     setTempRating((prev) => ({ ...prev, [jobId]: rating }));
   };
 
+  const handleReviewChange = (jobId, review) => {
+    setTempReview((prev) => ({ ...prev, [jobId]: review }));
+  };
+
   const handleSubmitRating = async (jobId) => {
     const rating = tempRating[jobId];
+    const review = tempReview[jobId] || '';
+
     if (!rating) {
       Swal.fire({
         icon: 'warning',
@@ -114,23 +123,33 @@ function ClientProjects() {
       return;
     }
 
+    if (review.length > 500) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Review Too Long',
+        text: 'Review cannot exceed 500 characters.',
+        confirmButtonColor: '#dc3545',
+      });
+      return;
+    }
+
     try {
       const response = await axios.post(
         'http://localhost:8000/api/submit-review/',
-        { job_id: jobId, rating },
-        { withCredentials: true }
+        { job_id: jobId, rating, review },
+        { withCredentials: true,  }
       );
       Swal.fire({
         icon: 'success',
-        title: 'Rating Submitted',
-        text: 'Your rating has been successfully submitted.',
+        title: 'Review Submitted',
+        text: 'Your rating and review have been successfully submitted.',
         confirmButtonColor: '#28a745',
         timer: 3000,
       });
 
       const updateProjects = (projectList) =>
         projectList.map((project) =>
-          project.job_id === jobId ? { ...project, rating } : project
+          project.job_id === jobId ? { ...project, rating, review } : project
         );
 
       setProjects((prev) => ({
@@ -143,8 +162,9 @@ function ClientProjects() {
       }));
       setRatings((prev) => ({ ...prev, [jobId]: rating }));
       setTempRating((prev) => ({ ...prev, [jobId]: undefined }));
+      setTempReview((prev) => ({ ...prev, [jobId]: undefined }));
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Failed to submit rating';
+      const errorMessage = err.response?.data?.error || 'Failed to submit rating and review';
       Swal.fire({
         icon: 'error',
         title: 'Error',
@@ -342,16 +362,31 @@ function ClientProjects() {
                                 </span>
                               ))}
                             </div>
+                            <div className="review-section">
+                              <textarea
+                                placeholder="Write your review here (optional, max 500 characters)..."
+                                value={tempReview[project.job_id] || ''}
+                                onChange={(e) => handleReviewChange(project.job_id, e.target.value)}
+                                maxLength={500}
+                                rows={3}
+                                disabled={!!project.rating && !tempRating[project.job_id]}
+                              />
+                            </div>
                             {tempRating[project.job_id] && (
                               <button
                                 className="submit-rating-btn"
                                 onClick={() => handleSubmitRating(project.job_id)}
                               >
-                                Submit Rating
+                                Submit Rating & Review
                               </button>
                             )}
                             {project.rating && !tempRating[project.job_id] && (
-                              <p>Current Rating: {project.rating} / 5</p>
+                              <>
+                                <p>Current Rating: {project.rating} / 5</p>
+                                {project.review && (
+                                  <p><strong>Review:</strong> {project.review}</p>
+                                )}
+                              </>
                             )}
                           </div>
                         </li>

@@ -19,6 +19,7 @@ import ProfessionalJobView from './pages/ProfessionalJobsDetails';
 import EditProjectView from './pages/EditProjects';
 import ClientPendingPayments from './pages/ClientPayment';
 import AdminJob from './pages/AdminJobs';
+import ClientHistory from './pages/ClientTransactions';
 
 function App() {
   return (
@@ -50,6 +51,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminJob />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client-transactions"
+            element={
+              <ProtectedRoute requiredRole="client">
+                < ClientHistory />
               </ProtectedRoute>
             }
           />

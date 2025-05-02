@@ -11,26 +11,42 @@ from .models import Payment
 from datetime import date
 
 class PaymentSerializer(serializers.ModelSerializer):
-    job_title = serializers.SerializerMethodField()
-    application_id = serializers.CharField(source='job_application.application_id', read_only=True)
+    job_application = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
-        fields = ['razorpay_order_id', 'amount', 'payment_type', 'job_title', 'application_id']
+        fields = ['razorpay_order_id', 'amount', 'payment_type', 'job_application']
 
-    def get_job_title(self, obj):
+    def get_job_application(self, obj):
         try:
-            return obj.job_application.job_id.title if obj.job_application and obj.job_application.job_id else 'Unknown Job'
+            if obj.job_application:
+                return {
+                    'id': obj.job_application.application_id,
+                    'job_title': obj.job_application.job_id.title if obj.job_application.job_id else 'Unknown Job',
+                    'professional_name': obj.job_application.professional_id.name if obj.job_application.professional_id else 'Unknown Professional',
+                    'status': obj.job_application.status,
+                }
+            return {
+                'id': None,
+                'job_title': 'Unknown Job',
+                'professional_name': 'Unknown Professional',
+                'status': 'N/A',
+            }
         except Exception as e:
-            print(f"Error in PaymentSerializer.get_job_title: {str(e)}")
-            return 'Unknown Job'
+            print(f"Error in PaymentSerializer.get_job_application: {str(e)}")
+            return {
+                'id': None,
+                'job_title': 'Unknown Job',
+                'professional_name': 'Unknown Professional',
+                'status': 'N/A',
+            }
 
     def to_representation(self, instance):
         try:
             representation = super().to_representation(instance)
             
             # Always convert amount to paisa for Razorpay
-            representation['amount'] = int(float(instance.amount) * 100)
+            representation['amount'] = int(float(instance.amount) * 100) if instance.amount else 0
             representation['order_id'] = instance.razorpay_order_id
             representation['key'] = settings.RAZORPAY_KEY_ID
             representation['name'] = 'Your Company Name'
@@ -41,7 +57,9 @@ class PaymentSerializer(serializers.ModelSerializer):
             else:
                 payment_desc = 'Remaining Payment'
                 
-            representation['description'] = f'{payment_desc} for Job: {self.get_job_title(instance)}'
+            # Use nested job_application.job_title for description
+            job_title = representation.get('job_application', {}).get('job_title', 'Unknown Job')
+            representation['description'] = f'{payment_desc} for Job: {job_title}'
             
             # Debug log
             print(f"PaymentSerializer debug: Original amount={instance.amount}, Converted amount={representation['amount']}")
@@ -172,9 +190,10 @@ class JobSerializer(serializers.ModelSerializer):
             'created_at',
             'advance_payment',
             'client_id',
-            'client_name',  # Added
+            'client_name',  
             'applicants_count',
-            'rating'
+            'rating',
+            'review'
         ]
         read_only_fields = ['job_id', 'status', 'created_at', 'client_id', 'client_name', 'applicants_count', 'rating']
 

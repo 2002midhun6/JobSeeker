@@ -1,4 +1,3 @@
-// src/pages/ClientJobApplications.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -10,7 +9,7 @@ function ClientJobApplications() {
   const { jobId } = useParams();
   const authContext = React.useContext(AuthContext);
   const navigate = useNavigate();
-  const { user, isAuthenticated } = authContext || { user: null, isAuthenticated: false };
+  const { user, isAuthenticated, token } = authContext || { user: null, isAuthenticated: false, token: null };
 
   const [applications, setApplications] = useState([]);
   const [jobTitle, setJobTitle] = useState('');
@@ -18,12 +17,17 @@ function ClientJobApplications() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [showUnavailable, setShowUnavailable] = useState(false);
+  const [minRating, setMinRating] = useState(''); // Minimum rating filter
+  const [minExperience, setMinExperience] = useState(''); // New: Minimum experience filter
 
   useEffect(() => {
     const fetchApplications = async () => {
+      
+
       try {
         const response = await axios.get(`http://localhost:8000/api/job-applications/${jobId}/`, {
           withCredentials: true,
+          
         });
         console.log('Fetch Applications Response:', response.data);
         setApplications(Array.isArray(response.data.applications) ? response.data.applications : []);
@@ -34,6 +38,9 @@ function ClientJobApplications() {
         setError(err.response?.data?.error || 'Failed to fetch applications');
         setApplications([]);
         setLoading(false);
+        if (err.response?.status === 401) {
+          navigate('/login');
+        }
       }
     };
 
@@ -42,10 +49,11 @@ function ClientJobApplications() {
     } else {
       navigate('/login');
     }
-  }, [isAuthenticated, user, jobId, navigate]);
+  }, [isAuthenticated, user, jobId, navigate, token]);
 
   const handlePayment = async (applicationId) => {
-    // Verify professional is still available before proceeding
+    
+
     const application = applications.find(app => app.application_id === applicationId);
     if (!application || application.professional_details?.availability_status !== 'Available') {
       Swal.fire({
@@ -58,15 +66,16 @@ function ClientJobApplications() {
     }
 
     try {
-      // Step 1: Initiate payment
       const response = await axios.post(
         `http://localhost:8000/api/accept-application/${applicationId}/`,
         {},
-        { withCredentials: true }
+        {
+          withCredentials: true,
+         
+        }
       );
       const { order_id, amount, currency, key, name, description, application_id, payment_type } = response.data;
 
-      // Step 2: Open Razorpay popup
       const options = {
         key,
         amount,
@@ -76,7 +85,6 @@ function ClientJobApplications() {
         order_id,
         handler: async function (response) {
           try {
-            // Step 3: Verify payment
             const verifyResponse = await axios.post(
               'http://localhost:8000/api/verify-payment/',
               {
@@ -86,10 +94,12 @@ function ClientJobApplications() {
                 application_id,
                 payment_type,
               },
-              { withCredentials: true }
+              {
+                withCredentials: true,
+               
+              }
             );
 
-            // Update UI
             setApplications((prev) =>
               prev.map((app) =>
                 app.application_id === applicationId
@@ -100,7 +110,6 @@ function ClientJobApplications() {
               )
             );
 
-            // Show success message
             Swal.fire({
               icon: 'success',
               title: 'Success',
@@ -109,7 +118,6 @@ function ClientJobApplications() {
               timer: 3000,
             });
 
-            // Navigate to client projects
             setTimeout(() => navigate('/client-project'), 2000);
           } catch (error) {
             Swal.fire({
@@ -123,7 +131,7 @@ function ClientJobApplications() {
         },
         prefill: {
           email: user?.email || 'client@example.com',
-          contact: '9999999999', // Optional: Replace with user.phone if available
+          contact: '9999999999',
         },
         theme: {
           color: '#28a745',
@@ -147,17 +155,19 @@ function ClientJobApplications() {
   const handleAccept = (applicationId) => {
     handlePayment(applicationId);
   };
-  
+
   const handleToggleUnavailable = () => {
     setShowUnavailable(!showUnavailable);
   };
 
-  // Filter applications based on availability
-  const filteredApplications = applications.filter(app => 
-    showUnavailable || app.professional_details?.availability_status === 'Available'
-  );
-  
-  // Count of unavailable professionals
+  // Updated filtering logic
+  const filteredApplications = applications.filter((app) => {
+    const meetsAvailability = showUnavailable || app.professional_details?.availability_status === 'Available';
+    const meetsRating = minRating === '' || (app.professional_details?.avg_rating || 0) >= Number(minRating);
+    const meetsExperience = minExperience === '' || (app.professional_details?.experience_years || 0) >= Number(minExperience);
+    return meetsAvailability && meetsRating && meetsExperience;
+  });
+
   const unavailableCount = applications.filter(app => 
     app.professional_details?.availability_status !== 'Available'
   ).length;
@@ -169,7 +179,7 @@ function ClientJobApplications() {
       <h1>{jobTitle ? `${jobTitle} (Job ID: ${jobId})` : `Loading Job Title (Job ID: ${jobId})`}</h1>
       {error && <div className="error-message">{error}</div>}
       {message && <div className="success-message">{message}</div>}
-      
+
       {loading ? (
         <p>Loading applications...</p>
       ) : applications.length === 0 ? (
@@ -178,21 +188,45 @@ function ClientJobApplications() {
         <>
           <div className="applications-header">
             <h2>Applications ({filteredApplications.length})</h2>
-            {unavailableCount > 0 && (
-              <button 
-                className="toggle-unavailable-btn"
-                onClick={handleToggleUnavailable}
-              >
-                {showUnavailable ? 'Hide' : 'Show'} Unavailable ({unavailableCount})
-              </button>
-            )}
+            <div className="filter-controls">
+              <label style={{color:'black'}}>
+                Minimum Rating:
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="5"
+                  value={minRating}
+                  onChange={(e) => setMinRating(e.target.value)}
+                  placeholder="e.g., 4.0"
+                />
+              </label>
+              <label style={{color:'black'}}>
+                Minimum Experience (Years):
+                <input
+                  type="number"
+                  min="0"
+                  value={minExperience}
+                  onChange={(e) => setMinExperience(e.target.value)}
+                  placeholder="e.g., 3"
+                />
+              </label>
+              {unavailableCount > 0 && (
+                <button
+                  className="toggle-unavailable-btn"
+                  onClick={handleToggleUnavailable}
+                >
+                  {showUnavailable ? 'Hide' : 'Show'} Unavailable ({unavailableCount})
+                </button>
+              )}
+            </div>
           </div>
-          
+
           <ul className="applications-list">
             {filteredApplications.map((app) => {
               const isAvailable = app.professional_details?.availability_status === 'Available';
               const isVerified = app.professional_details?.verify_status === 'Verified';
-              
+
               return (
                 <li key={app.application_id} className={`application-item ${!isAvailable ? 'unavailable' : ''}`}>
                   <div className="application-header">
@@ -206,7 +240,7 @@ function ClientJobApplications() {
                       </span>
                     </h3>
                   </div>
-                  
+
                   <div className="professional-details">
                     <p><strong>Bio:</strong> {app.professional_details?.bio || 'N/A'}</p>
                     <p><strong>Skills:</strong> {Array.isArray(app.professional_details?.skills) 
@@ -218,10 +252,10 @@ function ClientJobApplications() {
                     <p><strong>Application Status:</strong> <span className={`status-badge ${app.status.toLowerCase()}`}>{app.status}</span></p>
                     <p><strong>Applied At:</strong> {new Date(app.applied_at).toLocaleString()}</p>
                   </div>
-                  
+
                   {app.status === 'Applied' && (
                     <div className="application-actions">
-                      <button 
+                      <button
                         onClick={() => handleAccept(app.application_id)}
                         className={`accept-btn ${!isAvailable ? 'disabled' : ''}`}
                         disabled={!isAvailable}
@@ -229,7 +263,7 @@ function ClientJobApplications() {
                       >
                         {isAvailable ? 'Accept & Pay' : 'Professional Unavailable'}
                       </button>
-                      
+
                       {!isAvailable && (
                         <p className="unavailable-note">
                           This professional's status has changed since they applied and they are no longer available.
@@ -241,13 +275,13 @@ function ClientJobApplications() {
               );
             })}
           </ul>
-          
+
           {applications.length > 0 && filteredApplications.length === 0 && (
-            <p className="no-available">No available professionals found. Try showing unavailable professionals.</p>
+            <p className="no-available">No available professionals found. Try adjusting the filters.</p>
           )}
         </>
       )}
-      
+
       <div className="actions-footer">
         <button onClick={() => navigate('/client-project')} className="back-btn">
           Back to Projects

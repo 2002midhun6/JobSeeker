@@ -6,7 +6,7 @@ import { AuthContext } from '../../context/AuthContext';
 import './ProfessionalDashboardBody.css';
 
 function ProfessionalDashBoardContent() {
-  const { user, isAuthenticated } = useContext(AuthContext);
+  const { user, isAuthenticated} = useContext(AuthContext); 
   const navigate = useNavigate();
 
   const [hasProfile, setHasProfile] = useState(null);
@@ -19,13 +19,13 @@ function ProfessionalDashBoardContent() {
 
   useEffect(() => {
     const checkProfile = async () => {
+      
       try {
         const response = await axios.get('http://localhost:8000/api/profile/', {
           withCredentials: true,
+         
         });
         setHasProfile(true);
-        
-        console.log(response.data.avg_rating)
         setAvgRating(response.data.avg_rating || 0);
       } catch (err) {
         if (err.response?.status === 404) {
@@ -49,13 +49,15 @@ function ProfessionalDashBoardContent() {
     if (isAuthenticated && user && user.role === 'professional') {
       checkProfile();
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user,  navigate]);
 
   useEffect(() => {
     const fetchProjectCountsAndReviews = async () => {
+      
       try {
         const response = await axios.get('http://localhost:8000/api/professional-job-applications/', {
           withCredentials: true,
+         
         });
         const applications = Array.isArray(response.data.applications) ? response.data.applications : [];
         const activeCount = applications.filter(
@@ -72,6 +74,7 @@ function ProfessionalDashBoardContent() {
             job_id: app.job_details.job_id,
             title: app.job_details.title,
             rating: app.job_details.rating,
+            review: app.job_details.review || 'No review provided', // Add review field
             client_name: app.job_details.client_name || 'Unknown Client',
           }));
         setProjectCounts({ active: activeCount, completed: completedCount });
@@ -97,7 +100,7 @@ function ProfessionalDashBoardContent() {
     } else {
       setProjectLoading(false);
     }
-  }, [hasProfile]);
+  }, [hasProfile,  navigate]);
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== 'professional') {
@@ -113,7 +116,7 @@ function ProfessionalDashBoardContent() {
       <h1>Professional Dashboard</h1>
       {hasProfile ? (
         <>
-          <p style={{color:'white'}} >Welcome back to your Professional Dashboard, {user.name}!</p>
+          <p style={{ color: 'white' }}>Welcome back to your Professional Dashboard, {user.name}!</p>
           {projectLoading ? (
             <p>Loading project data...</p>
           ) : projectError ? (
@@ -121,12 +124,12 @@ function ProfessionalDashBoardContent() {
           ) : (
             <>
               <div className="project-counts-table">
-                <h2 style={{color:'black'}}>Project Overview</h2>
+                <h2 style={{ color: 'black' }}>Project Overview</h2>
                 <table>
                   <thead>
                     <tr>
-                      <th style={{color:'black'}}>Project Status</th>
-                      <th style={{color:'black'}}>Count</th>
+                      <th style={{ color: 'black' }}>Project Status</th>
+                      <th style={{ color: 'black' }}>Count</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -180,6 +183,8 @@ function ProfessionalDashBoardContent() {
                                 </span>
                               ))}
                             </span>
+                            <br />
+                            <em>Review:</em> {review.review}
                           </p>
                         </li>
                       ))}
@@ -193,8 +198,8 @@ function ProfessionalDashBoardContent() {
           )}
         </>
       ) : (
-        <div >
-          <p style={{color:"white"}}>Welcome to the Professional Dashboard, {user.name}! You don’t have a profile yet.</p>
+        <div>
+          <p style={{ color: 'white' }}>Welcome to the Professional Dashboard, {user.name}! You don’t have a profile yet.</p>
           <button onClick={() => navigate('/create-professional-profile')} className="create-profile-btn">
             Create Professional Profile
           </button>
