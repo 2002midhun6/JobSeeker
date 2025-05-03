@@ -29,7 +29,87 @@ import razorpay
 
 from .serializers import PaymentSerializer
 import traceback
+from .models import Complaint
+from rest_framework import status, generics
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from django.shortcuts import get_object_or_404
+from .models import Complaint
+from .serializers import ComplaintSerializer
+from django.db.models import Q
 
+class ComplaintListCreateView(generics.ListCreateAPIView):
+    """
+    View for creating complaints and listing user's own complaints
+    """
+    serializer_class = ComplaintSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Regular users can only see their own complaints
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return Complaint.objects.all().order_by('-created_at')
+        return Complaint.objects.filter(user=user).order_by('-created_at')
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class ComplaintDetailView(generics.RetrieveUpdateAPIView):
+    """
+    View for retrieving and updating a specific complaint
+    """
+    serializer_class = ComplaintSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return Complaint.objects.all()
+        return Complaint.objects.filter(user=user)
+    
+    def patch(self, request, *args, **kwargs):
+        user = request.user
+        complaint = self.get_object()
+        
+        # Only staff/admin can update status
+        if 'status' in request.data and not (user.is_superuser or user.is_staff):
+            return Response(
+                {'error': 'Only admins can update complaint status'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        return super().patch(request, *args, **kwargs)
+
+class AdminComplaintListView(generics.ListAPIView):
+    """
+    Admin view for listing all complaints with filtering options
+    """
+    serializer_class = ComplaintSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        permissions = super().get_permissions()
+        if not self.request.user.is_staff and not self.request.user.is_superuser:
+            return [IsAdminUser()]
+        return permissions
+    
+    def get_queryset(self):
+        queryset = Complaint.objects.all().order_by('-created_at')
+        
+        # Filter by status if provided
+        status_filter = self.request.query_params.get('status', None)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+            
+        # Search by description or user email
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                Q(description__icontains=search) | 
+                Q(user__email__icontains=search)
+            )
+            
+        return queryset
 class ClientPendingPaymentsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -981,6 +1061,32 @@ class ClientTransactionHistoryView(APIView):
 
         except Exception as e:
             print(f"Error in ClientTransactionHistoryView: {str(e)}")
+            return Response(
+                {'error': f'Internal server error: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class ProfessionalTransactionHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            if request.user.role != 'professional':
+                return Response(
+                    {'error': 'Only professionals can view transaction history'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Fetch payments where the user is the professional in the job application
+            job_applications = JobApplication.objects.filter(professional_id=request.user).select_related('job_id', 'job_id__client_id')
+            payments = Payment.objects.filter(job_application__in=job_applications).order_by('-created_at')
+
+            # Serialize the payments
+            serializer = PaymentSerializer(payments, many=True, context={'request': request})
+            return Response({'transactions': serializer.data}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Error in ProfessionalTransactionHistoryView: {str(e)}")
             return Response(
                 {'error': f'Internal server error: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

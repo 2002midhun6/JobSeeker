@@ -231,3 +231,25 @@ class PaymentRequest(models.Model):
 
     def __str__(self):
         return f"Payment Request {self.request_id} for {self.payment} by {self.client.email}"
+class Complaint(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('RESOLVED', 'Resolved'),
+        ('CLOSED', 'Closed'),
+    )
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='complaints')
+    description = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Complaint {self.id} by {self.user.email}"
+
+    def user_role(self):
+        return self.user.role if self.user.role else 'Unknown'

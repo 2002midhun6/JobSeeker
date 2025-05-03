@@ -68,7 +68,7 @@ function ClientDashBoardContent() {
             <thead >
               <tr style={{color:'black'}}>
                 <th  style={{color:'black'}}>Project Status</th>
-                <th tbody style={{color:'black'}}>Count</th>
+                <th >Count</th>
               </tr>
             </thead>
             <tbody style={{color:'black'}}>

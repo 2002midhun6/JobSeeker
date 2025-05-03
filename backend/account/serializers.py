@@ -9,7 +9,44 @@ from django.core.mail import send_mail
 from django.conf import settings
 from .models import Payment
 from datetime import date
+from .models import Complaint
 
+
+
+class ComplaintSerializer(serializers.ModelSerializer):
+    user_email = serializers.SerializerMethodField()
+    user_role = serializers.SerializerMethodField()
+    status_display = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Complaint
+        fields = [
+            'id', 
+            'user', 
+            'user_email',
+            'user_role',
+            'description', 
+            'status', 
+            'status_display',
+            'created_at', 
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'user', 'user_email', 'user_role', 'created_at', 'updated_at', 'status_display']
+    
+    def get_user_email(self, obj):
+        return obj.user.email if obj.user else None
+    
+    def get_user_role(self, obj):
+        return obj.user.role if obj.user else None
+    
+    def get_status_display(self, obj):
+        return obj.get_status_display()
+    
+    def create(self, validated_data):
+        # Associate complaint with the current user
+        user = self.context['request'].user
+        validated_data['user'] = user
+        return super().create(validated_data)
 class PaymentSerializer(serializers.ModelSerializer):
     job_application = serializers.SerializerMethodField()
 
@@ -24,12 +61,14 @@ class PaymentSerializer(serializers.ModelSerializer):
                     'id': obj.job_application.application_id,
                     'job_title': obj.job_application.job_id.title if obj.job_application.job_id else 'Unknown Job',
                     'professional_name': obj.job_application.professional_id.name if obj.job_application.professional_id else 'Unknown Professional',
+                    'client_name': obj.job_application.job_id.client_id.name if obj.job_application.job_id.client_id else 'Unknown Client',
                     'status': obj.job_application.status,
                 }
             return {
                 'id': None,
                 'job_title': 'Unknown Job',
                 'professional_name': 'Unknown Professional',
+                'client_name': 'Unknown Client',
                 'status': 'N/A',
             }
         except Exception as e:
@@ -38,6 +77,7 @@ class PaymentSerializer(serializers.ModelSerializer):
                 'id': None,
                 'job_title': 'Unknown Job',
                 'professional_name': 'Unknown Professional',
+                'client_name': 'Unknown Client',
                 'status': 'N/A',
             }
 

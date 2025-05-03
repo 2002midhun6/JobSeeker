@@ -1,0 +1,222 @@
+.admin-complaint-management {
+    padding: 300px;
+    width: 75%;
+    margin-top: -200px;
+    padding-left: 200px;
+    
+    
+  }
+  
+  .admin-complaint-management h1 {
+   
+    color: #2c3e50;
+    font-weight: 600;
+  }
+  
+  .filters-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  
+  .status-filter {
+    display: flex;
+    align-items: center;
+  }
+  
+  .status-filter label {
+    margin-right: 10px;
+    font-weight: 500;
+    color: #212529;
+  }
+  
+  .status-filter select,
+  .status-select {
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: rgb(11, 11, 11);
+    cursor: pointer;
+  }
+  
+  .status-filter select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1em;
+  }
+  
+  .search-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    max-width: 400px;
+    
+  }
+  
+  .search-form input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1em;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  
+  .search-form input:focus {
+    border-color: #28a745;
+  }
+  
+  .search-form input::placeholder {
+    color: #6c757d;
+    opacity: 0.7;
+  }
+  
+  .search-form button {
+    padding: 8px 16px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .search-form button:hover {
+    background-color: #218838;
+  }
+  
+  .search-form button:active {
+    background-color: #1e7e34;
+  }
+  .complaints-table-container {
+    overflow-x: auto;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .complaints-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .complaints-table th,
+  .complaints-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .complaints-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+  }
+  
+  .complaints-table tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .description-cell {
+    max-width: 250px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .actions-cell {
+    width: 150px;
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+  
+  .badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+  }
+  
+  .badge-info {
+    background-color: #17a2b8;
+    color: white;
+  }
+  
+  .badge-success {
+    background-color: #28a745;
+    color: white;
+  }
+  
+  .badge-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .badge-primary {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .loading,
+  .error,
+  .no-complaints {
+    text-align: center;
+    padding: 30px;
+    font-size: 1.1rem;
+  }
+  
+  .loading {
+    color: #6c757d;
+  }
+  
+  .error {
+    color: #dc3545;
+  }
+  
+  .no-complaints {
+    color: #6c757d;
+    font-style: italic;
+  }
+  
+  .admin-complaint-unauthorized {
+    text-align: center;
+    padding: 50px 20px;
+    color: #dc3545;
+  }
+  
+  @media (max-width: 992px) {
+    .filters-container {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .status-filter {
+      margin-bottom: 15px;
+    }
+    
+    .search-form {
+      width: 100%;
+    }
+    
+    .search-form input {
+      flex-grow: 1;
+    }
+    
+    .description-cell {
+      max-width: 150px;
+    }
+  }

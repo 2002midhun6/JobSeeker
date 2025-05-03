@@ -20,6 +20,10 @@ import EditProjectView from './pages/EditProjects';
 import ClientPendingPayments from './pages/ClientPayment';
 import AdminJob from './pages/AdminJobs';
 import ClientHistory from './pages/ClientTransactions';
+import ComplaintManagements from './pages/ClientComplaints';
+import AdminComplaint from './pages/AdminComplaints';
+import ProfessionalComplient from './pages/ProfessionalComplaint';
+import ProfessionalPayment from './pages/ProfessinalTransaction';
 
 function App() {
   return (
@@ -46,6 +50,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin_user_complaints"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminComplaint />
+              </ProtectedRoute>
+            }
+          />
            <Route
             path="/admin_user_job"
             element={
@@ -59,6 +71,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="client">
                 < ClientHistory />
+              </ProtectedRoute>
+            }
+          />
+           <Route
+            path="/Complaint"
+            element={
+              <ProtectedRoute requiredRole="client">
+                < ComplaintManagements />
               </ProtectedRoute>
             }
           />
@@ -100,6 +120,22 @@ function App() {
             element={
               <ProtectedRoute requiredRole="professional">
                 <ProfessionalJoblist />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/professional-complaint"
+            element={
+              <ProtectedRoute requiredRole="professional">
+                <ProfessionalComplient />
+              </ProtectedRoute>
+            }
+          />
+           <Route
+            path="/professional/transactions"
+            element={
+              <ProtectedRoute requiredRole="professional">
+                <ProfessionalPayment/>
               </ProtectedRoute>
             }
           />

@@ -3,6 +3,8 @@ import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../../context/AuthContext'; // Adjust path
 import axios from 'axios';
 import './ClinetDashboardHeader.css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 
 function ClientHeader() {
   const { dispatch } = useContext(AuthContext);
@@ -86,6 +88,14 @@ function ClientHeader() {
               <Link to="/client-transactions" className="nav-link">
                 <span className="nav-icon">💸</span>
                 <span className="nav-text">Transaction</span>
+              </Link>
+            </li>
+            <li className={`nav-item ${isActive('/Complaint')}`}>
+              <Link to="/Complaint" className="nav-link">
+              <span className="nav-icon">
+              <FontAwesomeIcon icon={faExclamationCircle} />
+            </span>
+                <span className="nav-text">Complaint</span>
               </Link>
             </li>
           </ul>

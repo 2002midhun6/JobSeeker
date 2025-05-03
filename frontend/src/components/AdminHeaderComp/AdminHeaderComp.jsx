@@ -59,12 +59,12 @@ function AdminHeaderComp() {
                 <span className="text">Jobs</span>
               </Link>
             </li>
-            {/* <li className={isActive('/admin_user_complaints')}>
+            <li className={isActive('/admin_user_complaints')}>
               <Link to="/admin_user_complaints">
                 <span className="icon">🔔</span>
                 <span className="text">Complaints</span>
               </Link>
-            </li> */}
+            </li>
           </ul>
         </nav>
         

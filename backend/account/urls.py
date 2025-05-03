@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import RegisterView, LoginView, LogoutView,VerifyOTPView,ForgotPasswordView, ResetPasswordView,AcceptJobApplicationView, JobDetailView, RequestVerificationView,AdminVerifyProfessionalView,ProfessionalJobApplicationsView,SubmitReviewView,AdminJobsView
-from .views import CheckAuthView,BlockUnblockUserView,ListUsersView,ProfessionalProfileView,JobCreateView,OpenJobsListView,ApplyToJobView,ClientProjectsView,JobApplicationsListView,AdminVerificationRequestsView,VerifyPaymentView,ClientPendingPaymentsView,ClientTransactionHistoryView
+from .views import RegisterView, LoginView, LogoutView,VerifyOTPView,ForgotPasswordView, ResetPasswordView,AcceptJobApplicationView, JobDetailView, RequestVerificationView,AdminVerifyProfessionalView,ProfessionalJobApplicationsView,SubmitReviewView,AdminJobsView,ComplaintListCreateView,AdminComplaintListView
+from .views import CheckAuthView,BlockUnblockUserView,ListUsersView,ProfessionalProfileView,JobCreateView,OpenJobsListView,ApplyToJobView,ClientProjectsView,JobApplicationsListView,AdminVerificationRequestsView,VerifyPaymentView,ClientPendingPaymentsView,ClientTransactionHistoryView,ComplaintDetailView,ProfessionalTransactionHistoryView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -29,6 +29,12 @@ urlpatterns = [
     path('submit-review/',SubmitReviewView.as_view(), name='submit-review'),
     path('admin/jobs/', AdminJobsView.as_view(), name='admin-jobs'),
     path('client/transactions/', ClientTransactionHistoryView.as_view(), name='client-transactions'),
+    path('complaints/', ComplaintListCreateView.as_view(), name='complaint-list-create'),
+    path('complaints/<int:pk>/', ComplaintDetailView.as_view(), name='complaint-detail'),
+    path('admin/complaints/', AdminComplaintListView.as_view(), name='admin-complaint-list'),
+    path('professional/transactions/', ProfessionalTransactionHistoryView.as_view(), name='professional-transactions'),
+
+    
 
 
 ]

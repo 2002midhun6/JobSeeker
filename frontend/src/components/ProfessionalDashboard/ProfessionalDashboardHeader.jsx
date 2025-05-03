@@ -4,6 +4,8 @@ import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext'; // Adjust path
 import axios from 'axios';
 import './ProfessionalDashboardHeader.css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 
 function ProfessionalHeader() {
   const { dispatch } = useContext(AuthContext);
@@ -55,6 +57,22 @@ function ProfessionalHeader() {
               <Link to="/Professional-profile" className="nav-link">
                 <span className="nav-icon">👤</span>
                 <span className="nav-text">PROFILE</span>
+              </Link>
+            
+            </li>
+            <li className={`nav-item ${isActive('/professional/transactions')}`}>
+              <Link to="/professional/transactions" className="nav-link">
+               <span className="nav-icon">💸</span>
+                <span className="nav-text">Transaction</span>
+              </Link>
+            
+            </li>
+            <li className={`nav-item ${isActive('/professional-complaint')}`}>
+              <Link to="/professional-complaint" className="nav-link">
+               <span className="nav-icon">
+                            <FontAwesomeIcon icon={faExclamationCircle} />
+                          </span>
+                          <span className="nav-text">Complaints</span>
               </Link>
             </li>
           </ul>

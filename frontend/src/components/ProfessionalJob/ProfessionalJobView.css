@@ -3,6 +3,7 @@
     margin: 0 auto;
     padding: 20px;
     min-height: 100vh; /* Ensure consistent height */
+    margin-top: 50px;
   }
   
   .jobs-card {
