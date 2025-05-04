@@ -25,6 +25,9 @@ import AdminComplaint from './pages/AdminComplaints';
 import ProfessionalComplient from './pages/ProfessionalComplaint';
 import ProfessionalPayment from './pages/ProfessinalTransaction';
 
+import ConversationChat from './components/Chat/ConversationChat'
+import ConversationsList from './components/Chat/ConversationsList'
+
 function App() {
   return (
     <Router>
@@ -154,6 +157,12 @@ function App() {
 
 <Route path="/admin-professional-verification" element={<ProtectedRoute requiredRole="admin">< AdminVerify /></ProtectedRoute>} />
 <Route path="/professional-job-applications" element={<ProfessionalJobView />} />
+<Route path="/client-conversations" element={<ConversationsList userType="client" />} />
+  <Route path="/client-conversation/:jobId" element={<ConversationChat />} />
+  
+  {/* Professional chat routes */}
+  <Route path="/professional-conversations" element={<ConversationsList userType="professional" />} />
+  <Route path="/professional-conversation/:jobId" element={<ConversationChat />} />
               
          </Routes>
       </div>

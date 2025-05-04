@@ -9,9 +9,28 @@ from django.core.mail import send_mail
 from django.conf import settings
 from .models import Payment
 from datetime import date
-from .models import Complaint
+from .models import Complaint,Conversation,Message
+class MessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.SerializerMethodField()
+    sender_role = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Message
+        fields = ['id', 'sender', 'sender_name', 'sender_role', 'content', 'created_at', 'is_read']
+    
+    def get_sender_name(self, obj):
+        return obj.sender.name
+    
+    def get_sender_role(self, obj):
+        return obj.sender.role
 
-
+class ConversationSerializer(serializers.ModelSerializer):
+    messages = MessageSerializer(many=True, read_only=True)
+    job_title = serializers.CharField(source='job.title', read_only=True)
+    
+    class Meta:
+        model = Conversation
+        fields = ['id', 'job', 'job_title', 'messages', 'created_at']
 
 class ComplaintSerializer(serializers.ModelSerializer):
     user_email = serializers.SerializerMethodField()

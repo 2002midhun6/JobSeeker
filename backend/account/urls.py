@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import RegisterView, LoginView, LogoutView,VerifyOTPView,ForgotPasswordView, ResetPasswordView,AcceptJobApplicationView, JobDetailView, RequestVerificationView,AdminVerifyProfessionalView,ProfessionalJobApplicationsView,SubmitReviewView,AdminJobsView,ComplaintListCreateView,AdminComplaintListView
-from .views import CheckAuthView,BlockUnblockUserView,ListUsersView,ProfessionalProfileView,JobCreateView,OpenJobsListView,ApplyToJobView,ClientProjectsView,JobApplicationsListView,AdminVerificationRequestsView,VerifyPaymentView,ClientPendingPaymentsView,ClientTransactionHistoryView,ComplaintDetailView,ProfessionalTransactionHistoryView
+from .views import RegisterView, LoginView, LogoutView,VerifyOTPView,ForgotPasswordView, ResetPasswordView,AcceptJobApplicationView, JobDetailView, RequestVerificationView,AdminVerifyProfessionalView,ProfessionalJobApplicationsView,SubmitReviewView,AdminJobsView,ComplaintListCreateView,AdminComplaintListView, ConversationView,UnreadMessagesCountView,CreateMissingConversationsView
+from .views import CheckAuthView,BlockUnblockUserView,ListUsersView,ProfessionalProfileView,JobCreateView,OpenJobsListView,ApplyToJobView,ClientProjectsView,JobApplicationsListView,AdminVerificationRequestsView,VerifyPaymentView,ClientPendingPaymentsView,ClientTransactionHistoryView,ComplaintDetailView,ProfessionalTransactionHistoryView,UserConversationsView,CheckJobStatesView,WebSocketAuthTokenView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -33,10 +33,13 @@ urlpatterns = [
     path('complaints/<int:pk>/', ComplaintDetailView.as_view(), name='complaint-detail'),
     path('admin/complaints/', AdminComplaintListView.as_view(), name='admin-complaint-list'),
     path('professional/transactions/', ProfessionalTransactionHistoryView.as_view(), name='professional-transactions'),
-
-    
-
-
+ # Add to your urlpatterns list
+path('conversations/', UserConversationsView.as_view(), name='user_conversations'),
+path('conversations/job/<int:job_id>/', ConversationView.as_view(), name='conversation'),
+path('conversations/unread-count/', UnreadMessagesCountView.as_view(), name='unread_messages_count'),
+path('create-missing-conversations/', CreateMissingConversationsView.as_view(), name='create_missing_conversations'),
+path('check-job-states/', CheckJobStatesView.as_view(), name='check_job_states'),
+path('ws-auth-token/', WebSocketAuthTokenView.as_view(), name='ws-auth-token'),
 ]
 
 

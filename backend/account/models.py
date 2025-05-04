@@ -7,6 +7,7 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.timezone import now
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
+# Add this to your existing models.py file
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, name, password=None, **extra_fields):
@@ -253,3 +254,22 @@ class Complaint(models.Model):
 
     def user_role(self):
         return self.user.role if self.user.role else 'Unknown'
+class Conversation(models.Model):
+    job = models.OneToOneField(Job, on_delete=models.CASCADE, related_name='conversation')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Conversation for {self.job.title}"
+
+class Message(models.Model):
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    
+    class Meta:
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"Message from {self.sender.name} at {self.created_at}"

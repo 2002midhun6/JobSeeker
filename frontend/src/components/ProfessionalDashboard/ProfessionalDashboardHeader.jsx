@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useContext } from 'react';
-import { AuthContext } from '../../context/AuthContext'; // Adjust path
+import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 import './ProfessionalDashboardHeader.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
+import { faExclamationCircle, faComments } from '@fortawesome/free-solid-svg-icons';
 
 function ProfessionalHeader() {
   const { dispatch } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
   const handleLogout = async () => {
     try {
@@ -25,6 +26,28 @@ function ProfessionalHeader() {
   const isActive = (path) => {
     return location.pathname.startsWith(path) ? 'active' : '';
   };
+
+  // Fetch unread messages count
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/api/conversations/unread-count/', {
+        withCredentials: true,
+      });
+      setUnreadMessagesCount(response.data.unread_count);
+    } catch (err) {
+      console.error('Error fetching unread count:', err);
+    }
+  };
+
+  // Set up interval to check for new messages
+  useEffect(() => {
+    fetchUnreadCount();
+    
+    const interval = setInterval(fetchUnreadCount, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <header className="header">
       <div className="header-container">
@@ -41,7 +64,7 @@ function ProfessionalHeader() {
                 <span className="nav-text">Dashboard</span>
               </Link>
             </li>
-            <li className={`nav-item ${isActive('professional-job')}`}>
+            <li className={`nav-item ${isActive('/professional-job')}`}>
               <Link to="/professional-job" className="nav-link">
                 <span className="nav-icon">📝</span>
                 <span className="nav-text">FIND A JOB</span>
@@ -53,26 +76,35 @@ function ProfessionalHeader() {
                 <span className="nav-text">MY PROJECT</span>
               </Link>
             </li>
+            <li className={`nav-item ${isActive('/professional-conversations')}`}>
+              <Link to="/professional-conversations" className="nav-link">
+                <span className="nav-icon">
+                  <FontAwesomeIcon icon={faComments} />
+                </span>
+                <span className="nav-text">Messages</span>
+                {unreadMessagesCount > 0 && (
+                  <span className="message-badge">{unreadMessagesCount}</span>
+                )}
+              </Link>
+            </li>
             <li className={`nav-item ${isActive('/Professional-profile')}`}>
               <Link to="/Professional-profile" className="nav-link">
                 <span className="nav-icon">👤</span>
                 <span className="nav-text">PROFILE</span>
               </Link>
-            
             </li>
             <li className={`nav-item ${isActive('/professional/transactions')}`}>
               <Link to="/professional/transactions" className="nav-link">
-               <span className="nav-icon">💸</span>
+                <span className="nav-icon">💸</span>
                 <span className="nav-text">Transaction</span>
               </Link>
-            
             </li>
             <li className={`nav-item ${isActive('/professional-complaint')}`}>
               <Link to="/professional-complaint" className="nav-link">
-               <span className="nav-icon">
-                            <FontAwesomeIcon icon={faExclamationCircle} />
-                          </span>
-                          <span className="nav-text">Complaints</span>
+                <span className="nav-icon">
+                  <FontAwesomeIcon icon={faExclamationCircle} />
+                </span>
+                <span className="nav-text">Complaints</span>
               </Link>
             </li>
           </ul>

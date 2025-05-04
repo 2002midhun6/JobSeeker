@@ -125,4 +125,21 @@
     font-size: 1.1rem;
   }
   
+  .message-badge {
+    background-color: #ff4f5e;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+  }
   
+  .nav-item {
+    position: relative;
+  }

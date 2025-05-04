@@ -13,10 +13,17 @@ from backend.utils import send_otp_email
 from .serializers import OTPVerificationSerializer
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.tokens import AccessToken
 import hashlib
 import hmac
 from decimal import Decimal
-
+from datetime import datetime, timedelta
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+import jwt
+from django.conf import settings
+import logging
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from .serializers import UserBlockSerializer,UserSerializer,JobSerializer,JobApplicationSerializer
@@ -24,7 +31,6 @@ from django.core.mail import send_mail
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 import razorpay
-
 
 
 from .serializers import PaymentSerializer
@@ -36,7 +42,197 @@ from django.shortcuts import get_object_or_404
 from .models import Complaint
 from .serializers import ComplaintSerializer
 from django.db.models import Q
+from .models import Conversation, Message
+from .serializers import ConversationSerializer, MessageSerializer
+# Add this to account/views.py
+from django.contrib.auth import get_user_model
 
+
+
+
+logger = logging.getLogger('django')
+CustomUser = get_user_model()
+class WebSocketAuthTokenView(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            # Ensure user is authenticated
+            if not request.user or request.user.is_anonymous:
+                logger.error("Unauthenticated user attempted to access WebSocket token")
+                return Response(
+                    {"error": "Authentication required"},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            # Generate access token
+            access_token = AccessToken.for_user(request.user)
+            token_str = str(access_token)
+            logger.info(f"Generated WebSocket token for user {request.user.id}")
+
+            return Response(
+                {
+                    "access_token": token_str,
+                    "user_id": request.user.id,  # Fixed: single user_id key, proper comma
+                    "email": request.user.email
+                },
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            logger.error(f"Error generating WebSocket token: {str(e)}")
+            return Response(
+                {"error": f"Failed to generate token: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+class CreateMissingConversationsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        # Find all assigned jobs
+        assigned_jobs = Job.objects.filter(status='Assigned')
+        created_count = 0
+        
+        # Create conversations for each job if not exists
+        for job in assigned_jobs:
+            conversation, created = Conversation.objects.get_or_create(job=job)
+            if created:
+                created_count += 1
+        
+        return Response({
+            'message': f'Created {created_count} new conversations for assigned jobs',
+            'total_assigned_jobs': assigned_jobs.count()
+        }, status=status.HTTP_200_OK)
+
+class ConversationView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, job_id):
+        try:
+            job = Job.objects.get(job_id=job_id)
+            
+            # Check authorization
+            if request.user != job.client_id:
+                application = JobApplication.objects.filter(
+                    job_id=job,
+                    professional_id=request.user,
+                    status='Accepted'
+                ).first()
+                
+                if not application:
+                    return Response(
+                        {'error': 'You are not authorized to access this conversation'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            
+            # Get or create conversation
+            conversation, created = Conversation.objects.get_or_create(job=job)
+            
+            # Mark messages as read
+            Message.objects.filter(
+                conversation=conversation,
+                is_read=False
+            ).exclude(sender=request.user).update(is_read=True)
+            
+            serializer = ConversationSerializer(conversation)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Job.DoesNotExist:
+            return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
+
+class UserConversationsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        
+        if user.role == 'client':
+            # Get conversations for jobs where the user is the client
+            jobs = Job.objects.filter(client_id=user, status='Assigned')
+            conversations = Conversation.objects.filter(job__in=jobs)
+        else:
+            # Get conversations for jobs where the user is the assigned professional
+            applications = JobApplication.objects.filter(
+                professional_id=user,
+                status='Accepted'
+            )
+            jobs = Job.objects.filter(
+                job_id__in=applications.values('job_id'),
+                status='Assigned'
+            )
+            conversations = Conversation.objects.filter(job__in=jobs)
+        
+        # Debug information
+        debug_info = {
+            'user_id': user.id,
+            'user_email': user.email,
+            'user_role': user.role,
+            'assigned_jobs_count': jobs.count(),
+            'conversations_count': conversations.count(),
+            'job_ids': [job.job_id for job in jobs]
+        }
+        
+        # Convert conversations to serialized data
+        serializer = ConversationSerializer(conversations, many=True)
+        
+        return Response({
+            'conversations': serializer.data,
+            'debug_info': debug_info
+        }, status=status.HTTP_200_OK)
+
+class UnreadMessagesCountView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        
+        if user.role == 'client':
+            # Count unread messages for client
+            jobs = Job.objects.filter(client_id=user)
+            conversations = Conversation.objects.filter(job__in=jobs)
+        else:
+            # Count unread messages for professional
+            applications = JobApplication.objects.filter(professional_id=user, status='Accepted')
+            jobs = Job.objects.filter(job_id__in=applications.values('job_id'))
+            conversations = Conversation.objects.filter(job__in=jobs)
+        
+        unread_count = Message.objects.filter(
+            conversation__in=conversations,
+            is_read=False
+        ).exclude(sender=user).count()
+        
+        return Response({'unread_count': unread_count}, status=status.HTTP_200_OK)
+# Add a temporary endpoint to check job states
+class CheckJobStatesView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        
+        if user.role == 'client':
+            jobs = Job.objects.filter(client_id=user)
+        else:
+            applications = JobApplication.objects.filter(professional_id=user)
+            jobs = Job.objects.filter(job_id__in=applications.values('job_id'))
+        
+        job_states = []
+        for job in jobs:
+            applications = JobApplication.objects.filter(job_id=job)
+            job_states.append({
+                'job_id': job.job_id,
+                'title': job.title,
+                'status': job.status,
+                'applications': [
+                    {
+                        'application_id': app.application_id,
+                        'professional_id': app.professional_id.id,
+                        'professional_email': app.professional_id.email,
+                        'status': app.status
+                    } for app in applications
+                ]
+            })
+        
+        return Response({
+            'job_states': job_states,
+            'user_role': user.role
+        }, status=status.HTTP_200_OK)
 class ComplaintListCreateView(generics.ListCreateAPIView):
     """
     View for creating complaints and listing user's own complaints
@@ -629,7 +825,7 @@ class AcceptJobApplicationView(APIView):
                 amount=amount,
                 status='created'
             )
-
+            conversation, created = Conversation.objects.get_or_create(job=job)
             # Return order details for frontend
             return Response({
                 'message': 'Proceed to initial payment',

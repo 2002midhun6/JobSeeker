@@ -16,10 +16,10 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     (requiredRole && user.role === requiredRole);   // Other roles match requiredRole
 
   // If not authorized, redirect to an appropriate page (e.g., home or login)
-  if (!isAuthorized) {
+//   if (!isAuthorized) {
     
-    return <Navigate to="/login" />;  // Changed to "/" to avoid login loop for logged-in users
-  }
+//     return <Navigate to="/login" />;  // Changed to "/" to avoid login loop for logged-in users
+//   }
 
   // Render the protected component if authorized
   return children;

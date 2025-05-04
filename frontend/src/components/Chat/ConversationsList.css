@@ -1,0 +1,128 @@
+.conversations-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .conversations-container h2 {
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+  }
+  
+  .conversations-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .conversation-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  
+  .conversation-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .conversation-link {
+    display: block;
+    padding: 15px;
+    text-decoration: none;
+    color: inherit;
+  }
+  
+  .conversation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  
+  .job-title {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+    font-weight: 600;
+  }
+  
+  .unread-badge {
+    background-color: #ff4f5e;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  
+  .last-message {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .sender-name {
+    font-weight: bold;
+    margin-right: 5px;
+  }
+  
+  .timestamp {
+    display: block;
+    font-size: 12px;
+    color: #999;
+    margin-top: 8px;
+    text-align: right;
+  }
+  
+  .loading-indicator,
+  .error-message,
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+  }
+  
+  .error-message {
+    color: #ff4f5e;
+  }
+  
+  .empty-state {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 30px;
+  }
+  
+  .empty-state p {
+    margin-bottom: 15px;
+  }
+  
+  .action-button {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    margin-top: 10px;
+  }
+  
+  .action-button:hover {
+    background-color: #45a049;
+  }
+  
+  .no-messages {
+    color: #999;
+    font-style: italic;
+  }
