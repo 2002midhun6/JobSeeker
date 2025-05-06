@@ -41,6 +41,7 @@ function ConversationsList({ userType = 'client' }) {
     const interval = setInterval(fetchConversations, 30000);
     return () => clearInterval(interval);
   }, []);
+
   // Function to determine conversation link based on user type
   const getConversationLink = (jobId) => {
     return userType === 'client' 
@@ -50,7 +51,10 @@ function ConversationsList({ userType = 'client' }) {
 
   return (
     <div className="conversations-container">
-      <h2>Your Conversations</h2>
+      <div className="header">
+        <button onClick={() => navigate(-1)} className="back-button">← Back</button>
+        <h2>Your Conversations</h2>
+      </div>
       {loading ? (
         <div className="loading-indicator">Loading conversations...</div>
       ) : error ? (

@@ -15,6 +15,7 @@ function ConversationChat() {
   const [socketRetries, setSocketRetries] = useState(0);
   const [socketError, setSocketError] = useState(null);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
   
   const MAX_SOCKET_RETRIES = 5;
@@ -47,8 +48,6 @@ function ConversationChat() {
     fetchConversation();
   }, [jobId]);
 
-  // In your ConversationChat.jsx file
-
   useEffect(() => {
     let ws = null;
     let reconnectTimer = null;
@@ -67,13 +66,12 @@ function ConversationChat() {
   
       console.log(`WebSocket attempt ${socketRetries + 1}/${MAX_SOCKET_RETRIES}`);
   
-      // Get a WebSocket auth token from the server
       axios
         .get('http://localhost:8000/api/ws-auth-token/', {
-          withCredentials: true, // Important for sending cookies
+          withCredentials: true,
         })
         .then(response => {
-          const token = response.data.access_token; // Changed from response.data.token to response.data.access_token
+          const token = response.data.access_token;
           console.log('Received WebSocket auth token:', token ? token : 'Missing');
   
           if (!token) {
@@ -123,16 +121,15 @@ function ConversationChat() {
             console.log(`WebSocket closed: code=${event.code}, reason=${event.reason}`);
             setSocketConnected(false);
   
-            // Handle specific close codes
             if (event.code === 4001) {
               setSocketError('Authentication failed. Please log in again.');
-              return; // Don't retry for auth failures
+              return;
             } else if (event.code === 4002) {
               setSocketError('Invalid authentication token. Please refresh the page.');
-              return; // Don't retry for invalid tokens
+              return;
             } else if (event.code === 4003) {
               setSocketError('Session expired. Please log in again.');
-              return; // Don't retry for expired sessions
+              return;
             }
   
             if (!event.wasClean && socketRetries < MAX_SOCKET_RETRIES) {
@@ -152,7 +149,6 @@ function ConversationChat() {
           console.error('Failed to get WebSocket auth token:', error);
           setSocketError('Authentication failed. Please refresh the page and try again.');
   
-          // Attempt reconnect after delay
           setTimeout(() => {
             setSocketRetries(prev => prev + 1);
             connectWebSocket();
@@ -194,6 +190,39 @@ function ConversationChat() {
     }
   };
 
+  // In ConversationChat.js
+// Update the handleFileUpload function
+
+const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !socketConnected) return;
+  
+    const formData = new FormData();
+    formData.append('file', file);
+  
+    try {
+        const response = await axios.post(
+            `http://localhost:8000/api/conversations/job/${jobId}/file/`,
+            formData,
+            {
+              withCredentials: true,
+              headers: { 'Content-Type': 'multipart/form-data' },
+            }
+          );
+      console.log('File uploaded:', response.data);
+      
+      // No need to send an additional websocket message after successful upload
+      // as the FileUploadView already creates a Message object that would be 
+      // broadcasted through the WebSocket connection
+    } catch (error) {
+      console.error('File upload error:', error.response?.data || error.message);
+      setSocketError(`Failed to upload file: ${error.response?.data?.error || 'Please try again'}`);
+    }
+  
+    // Reset file input
+    e.target.value = null;
+  };
+
   const handleReconnect = () => {
     setSocketRetries(0);
     setSocketError(null);
@@ -202,7 +231,7 @@ function ConversationChat() {
   const formatTime = (dateString) => {
     return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-  
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -255,7 +284,7 @@ function ConversationChat() {
         {Object.keys(messageGroups).length === 0 ? (
           <div className="no-messages">
             <p>No messages yet</p>
-            <p>Start the conversation by sending a message below</p>
+            <p>Start the conversation by sending a message or uploading a file below</p>
           </div>
         ) : (
           Object.entries(messageGroups).map(([date, messagesForDate]) => (
@@ -269,7 +298,19 @@ function ConversationChat() {
                     <span className="message-sender">{message.sender_name}</span>
                     <span className="message-time">{formatTime(message.created_at)}</span>
                   </div>
-                  <div className="message-content">{message.content}</div>
+                  {message.file_type === 'image' && message.file_url ? (
+                    <div className="message-image">
+                      <img src={message.file_url} alt="Uploaded image" style={{ maxWidth: '200px', borderRadius: '8px' }} />
+                    </div>
+                  ) : message.file_type === 'document' && message.file_url ? (
+                    <div className="message-document">
+                      <a href={message.file_url} target="_blank" rel="noopener noreferrer">
+                        📄 {message.file_url.split('/').pop()}
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="message-content">{message.content}</div>
+                  )}
                 </div>
               ))}
             </div>
@@ -279,15 +320,34 @@ function ConversationChat() {
       </div>
 
       <form className="message-form" onSubmit={handleSendMessage}>
-        <textarea
-          className="message-input"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={socketConnected ? "Type your message here..." : "Connecting to chat..."}
-          disabled={!socketConnected}
-        />
-        <button 
-          type="submit" 
+        <div className="message-input-container">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept="image/jpeg,image/png,image/gif,application/pdf,.doc,.docx"
+            style={{ display: 'none' }}
+            disabled={!socketConnected}
+          />
+          <button
+            type="button"
+            className="file-upload-button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!socketConnected}
+          >
+            📎
+          </button>
+          <textarea
+            style={{ color: 'black' }}
+            className="message-input"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder={socketConnected ? "Type your message here..." : "Connecting to chat..."}
+            disabled={!socketConnected}
+          />
+        </div>
+        <button
+          type="submit"
           className="send-button"
           disabled={!socketConnected || !newMessage.trim()}
         >

@@ -208,3 +208,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Razorpay Configuration
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")  
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")   
+# settings.py
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -13,16 +13,22 @@ from .models import Complaint,Conversation,Message
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()
     sender_role = serializers.SerializerMethodField()
-    
+    file_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'sender_name', 'sender_role', 'content', 'created_at', 'is_read']
+        fields = ['id', 'sender', 'sender_name', 'sender_role', 'content', 'file_url', 'file_type', 'created_at', 'is_read']
     
     def get_sender_name(self, obj):
         return obj.sender.name
     
     def get_sender_role(self, obj):
         return obj.sender.role
+    
+    def get_file_url(self, obj):
+        if obj.file:
+            return obj.file.url
+        return None
 
 class ConversationSerializer(serializers.ModelSerializer):
     messages = MessageSerializer(many=True, read_only=True)

@@ -82,15 +82,112 @@ class WebSocketAuthTokenView(APIView):
                 {"error": f"Failed to generate token: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class FileUploadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, job_id):
+        try:
+            # Add logging to debug request
+            logger.info(f"FileUploadView accessed: job_id={job_id}, user={request.user.email}")
+            logger.info(f"Request FILES: {request.FILES}")
+            
+            file = request.FILES.get('file')
+            if not file:
+                logger.error("No file provided in request")
+                return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+            max_size = 5 * 1024 * 1024  # 5MB
+            if file.size > max_size:
+                logger.error(f"File size exceeds limit: {file.size} bytes")
+                return Response({'error': 'File size exceeds 5MB limit'}, status=status.HTTP_400_BAD_REQUEST)
+
+            allowed_types = {
+                'image': ['image/jpeg', 'image/png', 'image/gif'],
+                'document': ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+            }
+            
+            logger.info(f"File content type: {file.content_type}")
+            file_type = None
+            if file.content_type in allowed_types['image']:
+                file_type = 'image'
+            elif file.content_type in allowed_types['document']:
+                file_type = 'document'
+            else:
+                logger.error(f"Unsupported file type: {file.content_type}")
+                return Response({'error': 'Unsupported file type'}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                job = Job.objects.get(job_id=job_id)
+                conversation, created = Conversation.objects.get_or_create(job=job)
+                logger.info(f"Found job and conversation: job_id={job_id}, conversation_id={conversation.id}")
+            except Job.DoesNotExist:
+                logger.error(f"Job not found: job_id={job_id}")
+                return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
+
+            if request.user != job.client_id:
+                application = JobApplication.objects.filter(
+                    job_id=job,
+                    professional_id=request.user,
+                    status='Accepted'
+                ).first()
+                if not application:
+                    logger.error(f"Unauthorized file upload: user={request.user.email}, job_id={job_id}")
+                    return Response(
+                        {'error': 'You are not authorized to send files in this conversation'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
+            # Create the message with the file
+            message = Message.objects.create(
+                conversation=conversation,
+                sender=request.user,
+                file=file,
+                file_type=file_type,
+                content=''
+            )
+            logger.info(f"Created message with file: message_id={message.id}, file_type={file_type}")
+
+            # Send a WebSocket notification
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            channel_layer = get_channel_layer()
+            room_group_name = f'chat_{job_id}'
+            
+            # Prepare message data for WebSocket
+            message_data = {
+                'id': message.id,
+                'sender': message.sender.id,
+                'sender_name': message.sender.name,
+                'sender_role': message.sender.role,
+                'content': message.content,
+                'file_url': request.build_absolute_uri(message.file.url) if message.file else None,
+                'file_type': message.file_type,
+                'created_at': message.created_at.isoformat(),
+                'is_read': False
+            }
+            
+            async_to_sync(channel_layer.group_send)(
+                room_group_name,
+                {
+                    'type': 'chat_message',
+                    'message': message_data
+                }
+            )
+            
+            serializer = MessageSerializer(message)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"File upload error: {str(e)}")
+            return Response({'error': f"Failed to upload file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class CreateMissingConversationsView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        # Find all assigned jobs
         assigned_jobs = Job.objects.filter(status='Assigned')
         created_count = 0
         
-        # Create conversations for each job if not exists
         for job in assigned_jobs:
             conversation, created = Conversation.objects.get_or_create(job=job)
             if created:
@@ -108,7 +205,6 @@ class ConversationView(APIView):
         try:
             job = Job.objects.get(job_id=job_id)
             
-            # Check authorization
             if request.user != job.client_id:
                 application = JobApplication.objects.filter(
                     job_id=job,
@@ -122,10 +218,8 @@ class ConversationView(APIView):
                         status=status.HTTP_403_FORBIDDEN
                     )
             
-            # Get or create conversation
             conversation, created = Conversation.objects.get_or_create(job=job)
             
-            # Mark messages as read
             Message.objects.filter(
                 conversation=conversation,
                 is_read=False
@@ -144,11 +238,9 @@ class UserConversationsView(APIView):
         user = request.user
         
         if user.role == 'client':
-            # Get conversations for jobs where the user is the client
             jobs = Job.objects.filter(client_id=user, status='Assigned')
             conversations = Conversation.objects.filter(job__in=jobs)
         else:
-            # Get conversations for jobs where the user is the assigned professional
             applications = JobApplication.objects.filter(
                 professional_id=user,
                 status='Accepted'
@@ -159,7 +251,6 @@ class UserConversationsView(APIView):
             )
             conversations = Conversation.objects.filter(job__in=jobs)
         
-        # Debug information
         debug_info = {
             'user_id': user.id,
             'user_email': user.email,
@@ -169,7 +260,6 @@ class UserConversationsView(APIView):
             'job_ids': [job.job_id for job in jobs]
         }
         
-        # Convert conversations to serialized data
         serializer = ConversationSerializer(conversations, many=True)
         
         return Response({
@@ -184,14 +274,12 @@ class UnreadMessagesCountView(APIView):
         user = request.user
         
         if user.role == 'client':
-            # Count unread messages for client
             jobs = Job.objects.filter(client_id=user)
             conversations = Conversation.objects.filter(job__in=jobs)
         else:
-            # Count unread messages for professional
             applications = JobApplication.objects.filter(professional_id=user, status='Accepted')
             jobs = Job.objects.filter(job_id__in=applications.values('job_id'))
-            conversations = Conversation.objects.filter(job__in=jobs)
+            conversations = Conversation.objects.filter(job__in=conversations)
         
         unread_count = Message.objects.filter(
             conversation__in=conversations,
@@ -199,7 +287,7 @@ class UnreadMessagesCountView(APIView):
         ).exclude(sender=user).count()
         
         return Response({'unread_count': unread_count}, status=status.HTTP_200_OK)
-# Add a temporary endpoint to check job states
+
 class CheckJobStatesView(APIView):
     permission_classes = [IsAuthenticated]
     

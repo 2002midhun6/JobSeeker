@@ -8,6 +8,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from account.models import Job, JobApplication, Conversation, Message, CustomUser
 import jwt
+
 logger = logging.getLogger('django')
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -204,6 +205,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             conversation=conversation,
             sender=self.user,
             content=content,
+            file_type='text' if content else None,  # Set file_type to 'text' for text messages
             is_read=False
         )
         
@@ -213,6 +215,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'sender_name': message.sender.name,
             'sender_role': message.sender.role,
             'content': message.content,
+            'file_url': message.file.url if message.file else None,
+            'file_type': message.file_type,
             'created_at': message.created_at.isoformat(),
             'is_read': False
         }
