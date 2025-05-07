@@ -33,10 +33,12 @@ class MessageSerializer(serializers.ModelSerializer):
 class ConversationSerializer(serializers.ModelSerializer):
     messages = MessageSerializer(many=True, read_only=True)
     job_title = serializers.CharField(source='job.title', read_only=True)
-    
+    client_id = serializers.IntegerField(source='job.client_id.id', read_only=True, allow_null=True)
+    professional_id = serializers.IntegerField(source='job.professional_id.id', read_only=True, allow_null=True)
+
     class Meta:
         model = Conversation
-        fields = ['id', 'job', 'job_title', 'messages', 'created_at']
+        fields = ['id', 'job', 'job_title', 'client_id', 'professional_id', 'messages', 'created_at']
 
 class ComplaintSerializer(serializers.ModelSerializer):
     user_email = serializers.SerializerMethodField()

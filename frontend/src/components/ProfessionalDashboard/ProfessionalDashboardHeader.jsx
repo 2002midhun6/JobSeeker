@@ -27,7 +27,6 @@ function ProfessionalHeader() {
     return location.pathname.startsWith(path) ? 'active' : '';
   };
 
-  // Fetch unread messages count
   const fetchUnreadCount = async () => {
     try {
       const response = await axios.get('http://localhost:8000/api/conversations/unread-count/', {
@@ -39,12 +38,9 @@ function ProfessionalHeader() {
     }
   };
 
-  // Set up interval to check for new messages
   useEffect(() => {
     fetchUnreadCount();
-    
-    const interval = setInterval(fetchUnreadCount, 60000); // Check every minute
-    
+    const interval = setInterval(fetchUnreadCount, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -56,66 +52,62 @@ function ProfessionalHeader() {
           <span className="brand-type">PROFESSIONAL</span>
         </div>
 
-        <nav className="navigation">
-          <ul className="nav-list">
-            <li className={`nav-item ${isActive('/professional-dashboard')}`}>
-              <Link to="/professional-dashboard" className="nav-link">
-                <span className="nav-icon">📊</span>
-                <span className="nav-text">Dashboard</span>
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/professional-job')}`}>
-              <Link to="/professional-job" className="nav-link">
-                <span className="nav-icon">📝</span>
-                <span className="nav-text">FIND A JOB</span>
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/professional-job-applications')}`}>
-              <Link to="/professional-job-applications" className="nav-link">
-                <span className="nav-icon">✓</span>
-                <span className="nav-text">MY PROJECT</span>
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/professional-conversations')}`}>
-              <Link to="/professional-conversations" className="nav-link">
-                <span className="nav-icon">
-                  <FontAwesomeIcon icon={faComments} />
-                </span>
-                <span className="nav-text">Messages</span>
-                {unreadMessagesCount > 0 && (
-                  <span className="message-badge">{unreadMessagesCount}</span>
-                )}
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/Professional-profile')}`}>
-              <Link to="/Professional-profile" className="nav-link">
-                <span className="nav-icon">👤</span>
-                <span className="nav-text">PROFILE</span>
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/professional/transactions')}`}>
-              <Link to="/professional/transactions" className="nav-link">
-                <span className="nav-icon">💸</span>
-                <span className="nav-text">Transaction</span>
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/professional-complaint')}`}>
-              <Link to="/professional-complaint" className="nav-link">
-                <span className="nav-icon">
-                  <FontAwesomeIcon icon={faExclamationCircle} />
-                </span>
-                <span className="nav-text">Complaints</span>
-              </Link>
-            </li>
-          </ul>
-        </nav>
+        <ul className="nav-list">
+          <li className={`nav-item ${isActive('/professional-dashboard')}`}>
+            <Link to="/professional-dashboard" className="nav-link">
+              <span className="nav-icon">📊</span>
+              <span className="nav-text">Dashboard</span>
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/professional-job')}`}>
+            <Link to="/professional-job" className="nav-link">
+              <span className="nav-icon">📝</span>
+              <span className="nav-text">FIND A JOB</span>
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/professional-job-applications')}`}>
+            <Link to="/professional-job-applications" className="nav-link">
+              <span className="nav-icon">✓</span>
+              <span className="nav-text">MY PROJECT</span>
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/professional-conversations')}`}>
+            <Link to="/professional-conversations" className="nav-link">
+              <span className="nav-icon">
+                <FontAwesomeIcon icon={faComments} />
+              </span>
+              <span className="nav-text">Messages</span>
+              {unreadMessagesCount > 0 && (
+                <span className="message-badge">{unreadMessagesCount}</span>
+              )}
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/Professional-profile')}`}>
+            <Link to="/Professional-profile" className="nav-link">
+              <span className="nav-icon">👤</span>
+              <span className="nav-text">PROFILE</span>
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/professional/transactions')}`}>
+            <Link to="/professional/transactions" className="nav-link">
+              <span className="nav-icon">💸</span>
+              <span className="nav-text">Transaction</span>
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/professional-complaint')}`}>
+            <Link to="/professional-complaint" className="nav-link">
+              <span className="nav-icon">
+                <FontAwesomeIcon icon={faExclamationCircle} />
+              </span>
+              <span className="nav-text">Complaints</span>
+            </Link>
+          </li>
+        </ul>
 
-        <div className="user-actions">
-          <button onClick={handleLogout} className="logout-btn">
-            <span className="btn-icon">🚪</span>
-            <span className="btn-text">Logout</span>
-          </button>
-        </div>
+        <button onClick={handleLogout} className="logout-btn">
+          <span className="btn-icon">🚪</span>
+          <span className="btn-text">Logout</span>
+        </button>
       </div>
     </header>
   );

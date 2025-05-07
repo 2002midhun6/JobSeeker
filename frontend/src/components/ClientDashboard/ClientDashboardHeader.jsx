@@ -24,12 +24,10 @@ function ClientHeader() {
     }
   };
 
-  // Function to check if a link is active
   const isActive = (path) => {
     return location.pathname === path ? 'active' : '';
   };
 
-  // Fetch transaction history
   const fetchTransactions = async () => {
     setLoading(true);
     try {
@@ -44,7 +42,6 @@ function ClientHeader() {
     }
   };
 
-  // Fetch unread messages count
   const fetchUnreadCount = async () => {
     try {
       const response = await axios.get('http://localhost:8000/api/conversations/unread-count/', {
@@ -56,18 +53,14 @@ function ClientHeader() {
     }
   };
 
-  // Fetch data based on current route
   useEffect(() => {
     if (location.pathname === '/client-transactions') {
       fetchTransactions();
     }
     
-    // Always fetch unread messages count
     fetchUnreadCount();
     
-    // Set up interval to check for new messages
-    const interval = setInterval(fetchUnreadCount, 60000); // Check every minute
-    
+    const interval = setInterval(fetchUnreadCount, 60000);
     return () => clearInterval(interval);
   }, [location.pathname]);
 
@@ -78,67 +71,63 @@ function ClientHeader() {
           <h1 className="brand-name">JobSeeker</h1>
           <span className="brand-type">CLIENT</span>
         </div>
-       
-        <nav className="navigation">
-          <ul className="nav-list">
-            <li className={`nav-item ${isActive('/client-dashboard')}`}>
-              <Link to="/client-dashboard" className="nav-link">
-                <span className="nav-icon">📊</span>
-                <span className="nav-text">Dashboard</span>
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/client-job')}`}>
-              <Link to="/client-job" className="nav-link">
-                <span className="nav-icon">📝</span>
-                <span className="nav-text">POST A JOB</span>
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/client-project')}`}>
-              <Link to="/client-project" className="nav-link">
-                <span className="nav-icon">✓</span>
-                <span className="nav-text">MY PROJECT</span>
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/client-conversations')}`}>
-              <Link to="/client-conversations" className="nav-link">
-                <span className="nav-icon">
-                  <FontAwesomeIcon icon={faComments} />
-                </span>
-                <span className="nav-text">Messages</span>
-                {unreadMessagesCount > 0 && (
-                  <span className="message-badge">{unreadMessagesCount}</span>
-                )}
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/client-pending-payments')}`}>
-              <Link to="/client-pending-payments" className="nav-link">
-                <span className="nav-icon">📊</span>
-                <span className="nav-text">Pending Payment</span>
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/client-transactions')}`}>
-              <Link to="/client-transactions" className="nav-link">
-                <span className="nav-icon">💸</span>
-                <span className="nav-text">Transaction</span>
-              </Link>
-            </li>
-            <li className={`nav-item ${isActive('/Complaint')}`}>
-              <Link to="/Complaint" className="nav-link">
-                <span className="nav-icon">
-                  <FontAwesomeIcon icon={faExclamationCircle} />
-                </span>
-                <span className="nav-text">Complaint</span>
-              </Link>
-            </li>
-          </ul>
-        </nav>
-        
-        <div className="user-actions">
-          <button onClick={handleLogout} className="logout-btn">
-            <span className="btn-icon">🚪</span>
-            <span className="btn-text">Logout</span>
-          </button>
-        </div>
+
+        <ul className="nav-list">
+          <li className={`nav-item ${isActive('/client-dashboard')}`}>
+            <Link to="/client-dashboard" className="nav-link">
+              <span className="nav-icon">📊</span>
+              <span className="nav-text">Dashboard</span>
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/client-job')}`}>
+            <Link to="/client-job" className="nav-link">
+              <span className="nav-icon">📝</span>
+              <span className="nav-text">POST A JOB</span>
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/client-project')}`}>
+            <Link to="/client-project" className="nav-link">
+              <span className="nav-icon">✓</span>
+              <span className="nav-text">MY PROJECT</span>
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/client-conversations')}`}>
+            <Link to="/client-conversations" className="nav-link">
+              <span className="nav-icon">
+                <FontAwesomeIcon icon={faComments} />
+              </span>
+              <span className="nav-text">Messages</span>
+              {unreadMessagesCount > 0 && (
+                <span className="message-badge">{unreadMessagesCount}</span>
+              )}
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/client-pending-payments')}`}>
+            <Link to="/client-pending-payments" className="nav-link">
+              <span className="nav-icon">📊</span>
+              <span className="nav-text">Payment</span>
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/client-transactions')}`}>
+            <Link to="/client-transactions" className="nav-link">
+              <span className="nav-icon">💸</span>
+              <span className="nav-text">Transaction</span>
+            </Link>
+          </li>
+          <li className={`nav-item ${isActive('/Complaint')}`}>
+            <Link to="/Complaint" className="nav-link">
+              <span className="nav-icon">
+                <FontAwesomeIcon icon={faExclamationCircle} />
+              </span>
+              <span className="nav-text">Complaint</span>
+            </Link>
+          </li>
+        </ul>
+
+        <button onClick={handleLogout} className="logout-btn">
+          <span className="btn-icon">🚪</span>
+          <span className="btn-text">Logout</span>
+        </button>
       </div>
     </header>
   );

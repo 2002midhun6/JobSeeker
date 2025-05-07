@@ -1,28 +1,23 @@
 .header {
     background-color: #fff;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    padding-bottom: 28px;
     width: 100%;
-    border-bottom: 1px solid #e5e7eb;
-    width: 100vw;
-    
-    
+    box-sizing: border-box;
+    height: 100;
+  
   }
-
   
   .header-container {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 2rem;
-    max-width: 1200px;
+    gap: 10px;
+    max-width: 100%;
     margin: 0 auto;
-    height: 70px;
+ 
+    
   }
   
-  /* Brand section */
   .brand {
     display: flex;
     flex-direction: column;
@@ -30,139 +25,87 @@
   }
   
   .brand-name {
-    font-size: 1.8rem;
-    font-weight: 700;
-    background: linear-gradient(90deg, #2563eb, #4f46e5);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size: 1.3rem;
+    font-weight: bold;
     margin: 0;
-    line-height: 1;
   }
   
   .brand-type {
-    font-size: 0.6rem;
-    font-weight: 700;
-    color: #64748b;
- 
-    margin-top: 2px;
-    background-color: #f1f5f9;
- 
-    border-radius: 3px;
-  }
-  
-  /* Navigation */
-  .navigation {
-    flex: 1;
-    margin: 0 2rem;
+    font-size: 0.8rem;
+    color: #666;
   }
   
   .nav-list {
     display: flex;
+    flex-wrap: wrap;
     list-style: none;
     margin: 0;
     padding: 0;
-    gap: 0.5rem;
-    justify-content: center;
-    height: 100%
+    gap: 1px;
   }
   
   .nav-item {
-    position: relative;
-    height: 70px;
-    display: flex;
-    align-items: center;
+    margin: 0;
   }
   
   .nav-link {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    
-    
-    color: #64748b;
+    gap: 5px;
+    padding: 5px 8px;
     text-decoration: none;
-    font-weight: 600;
-    transition: all 0.2s ease;
-     
-
-    transition: all 0.2s ease-in-out;
-
+    color: #333;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
   }
   
   .nav-link:hover {
-    color: #2563eb;
-    background-color: #f1f5f9;
-    transform: translateY(-2px);
-  }
-  .nav-item.active .nav-link {
-    color: #1d4ed8;
-    background-color: #e0f2fe;
-    font-weight: 700;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.1);
+    background-color: #f0f0f0;
   }
   
-  .nav-item.active::after {
-    background-color: #1d4ed8;
+  .nav-link.active {
+    background-color: #c7d2dd;
+    color: #fff;
   }
   
   .nav-icon {
-    font-size: 1.2rem;
+    font-size: 1rem;
   }
   
   .nav-text {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-weight: 500;
   }
   
-  /* Logout button */
-  .user-actions {
-    display: flex;
-    align-items: center;
+  .message-badge {
+    background-color: #ff4d4f;
+    color: #fff;
+    border-radius: 50%;
+    padding: 2px 5px;
+    font-size: 0.7rem;
+    margin-left: 5px;
   }
   
   .logout-btn {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1.2rem;
-    background-color: #f8fafc;
-    color: #ef4444;
-    border: 1px solid #fee2e2;
-    border-radius: 6px;
-    font-weight: 600;
+    gap: 5px;
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 5px 8px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
   }
   
   .logout-btn:hover {
-    background-color: #fef2f2;
-    border-color: #fecaca;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.2);
+    background-color: #c82333;
   }
   
   .btn-icon {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
   
-  .message-badge {
-    background-color: #ff4f5e;
-    color: white;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    position: absolute;
-    top: 5px;
-    right: 5px;
-  }
-  
-  .nav-item {
-    position: relative;
+  .btn-text {
+    font-weight: 500;
   }
