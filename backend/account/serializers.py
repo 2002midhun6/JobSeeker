@@ -10,23 +10,31 @@ from django.conf import settings
 from .models import Payment
 from datetime import date
 from .models import Complaint,Conversation,Message
+from rest_framework import serializers
+from .models import Message
+
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()
     sender_role = serializers.SerializerMethodField()
     file_url = serializers.SerializerMethodField()
-
+    
     class Meta:
         model = Message
         fields = ['id', 'sender', 'sender_name', 'sender_role', 'content', 'file_url', 'file_type', 'created_at', 'is_read']
     
     def get_sender_name(self, obj):
-        return obj.sender.name
+        return obj.sender.name if hasattr(obj.sender, 'name') else str(obj.sender)
     
     def get_sender_role(self, obj):
-        return obj.sender.role
+        return obj.sender.role if hasattr(obj.sender, 'role') else 'unknown'
     
     def get_file_url(self, obj):
-        if obj.file:
+        if obj.file_absolute_url:
+            return obj.file_absolute_url
+        elif obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
             return obj.file.url
         return None
 

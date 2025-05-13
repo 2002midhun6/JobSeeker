@@ -1,106 +1,120 @@
-.incoming-call-overlay {
+/* IncomingCallDialog.css */
+.incoming-call-dialog {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-  
-  .incoming-call-dialog {
-    background-color: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    padding: 30px;
-    width: 360px;
-    text-align: center;
-    animation: popup 0.3s ease-out;
-  }
-  
-  @keyframes popup {
-    from {
-      transform: scale(0.8);
-      opacity: 0;
-    }
-    to {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
-  
-  .caller-avatar {
-    width: 80px;
-    height: 80px;
-    background-color: #2196F3;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #1a1a2e;
     color: white;
-    font-size: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 20px;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    width: 350px;
+    text-align: center;
+    animation: slideIn 0.3s ease;
+  }
+  
+  @keyframes slideIn {
+    from { transform: translate(-50%, -70%); opacity: 0; }
+    to { transform: translate(-50%, -50%); opacity: 1; }
   }
   
   .incoming-call-dialog h3 {
-    font-size: 24px;
-    margin: 0 0 10px;
-    color: #333;
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 22px;
   }
   
   .caller-info {
-    margin-bottom: 25px;
-    font-size: 16px;
-    color: #666;
+    margin-bottom: 24px;
+    font-size: 18px;
   }
   
-  .caller-name {
-    font-weight: bold;
-    margin-right: 5px;
+  .caller-info p {
+    margin: 8px 0;
   }
   
-  .call-action-buttons {
+  .caller-role {
+    font-size: 14px;
+    color: #4ecdc4;
+    margin-top: 5px;
+  }
+  
+  .incoming-call-dialog-buttons {
     display: flex;
     justify-content: center;
-    gap: 20px;
-  }
-  
-  .accept-call-button, .reject-call-button {
-    padding: 12px 24px;
-    border-radius: 50px;
-    border: none;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
+    gap: 16px;
   }
   
   .accept-call-button {
-    background-color: #4CAF50;
+    background-color: #4ecdc4;
     color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
   }
   
   .accept-call-button:hover {
-    background-color: #3d8b40;
-    transform: scale(1.05);
+    background-color: #33b9b0;
+    transform: translateY(-2px);
   }
   
   .reject-call-button {
-    background-color: #f44336;
+    background-color: #ff6b6b;
     color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
   }
   
   .reject-call-button:hover {
-    background-color: #d32f2f;
-    transform: scale(1.05);
+    background-color: #ff5252;
+    transform: translateY(-2px);
   }
   
-  .call-icon {
-    margin-right: 8px;
+  .incoming-call-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  /* Make sure the dialog appears on top of other UI elements */
+  .incoming-call-overlay,
+  .incoming-call-dialog {
+    z-index: 9999 !important;
+  }
+  
+  @media (max-width: 768px) {
+    .incoming-call-dialog {
+      width: 300px;
+      padding: 20px;
+    }
+    
+    .accept-call-button, .reject-call-button {
+      padding: 10px 20px;
+      font-size: 14px;
+    }
   }

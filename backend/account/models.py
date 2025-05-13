@@ -121,7 +121,13 @@ class Job(models.Model):
         ('Completed', 'Completed'),
         ('Closed', 'Closed'),
     ]
-
+    professional_id = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,  # Use SET_NULL to avoid deleting jobs when a professional is deleted
+        related_name='assigned_jobs',
+        null=True,
+        blank=True
+    )
     job_id = models.AutoField(primary_key=True)
     client_id = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -270,7 +276,11 @@ class Message(models.Model):
     file_type = models.CharField(max_length=20, blank=True, null=True)  # E.g., 'image', 'document', 'text'
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    file = models.FileField(upload_to='conversation_files/%Y/%m/%d/', null=True, blank=True)
+    file_type = models.CharField(max_length=20, null=True, blank=True)
     
+    # Add this new field to store the absolute URL
+    file_absolute_url = models.URLField(max_length=500, null=True, blank=True)
     class Meta:
         ordering = ['created_at']
     

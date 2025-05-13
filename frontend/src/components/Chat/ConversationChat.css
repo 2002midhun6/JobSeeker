@@ -1,397 +1,586 @@
-/* ConversationChat.css */
+Global reset to ensure full-screen layout
+html, body, #root, [class*="app-container"], [class*="router-container"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-width: 100vw !important;
+    max-width: 100vw !important;
+
+    box-sizing: border-box !important;
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
+  
+ /* ConversationChat.css */
 .chat-container {
-    
-    margin: 0 auto;
-    padding: 20px;
-    background-color: #f9fafb;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    font-family: 'Poppins', sans-serif;
     display: flex;
     flex-direction: column;
     height: 100vh;
     width: 100vw;
+    margin: 0 auto;
+    background-color: #f5f7fa;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
   }
   
   .chat-header {
-    width: 100vw;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-  }
-  
-  .chat-header h2 {
-    font-size: 24px;
-    font-weight: 600;
-    color: #1f2937;
-    margin: 0;
-    background: linear-gradient(to right, #3b82f6, #10b981);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    padding: 16px 20px;
+    background-color: #1a1a2e;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
   
   .back-button {
-    background: linear-gradient(90deg, #3b82f6, #10b981);
-    color: #ffffff;
-    padding: 8px 16px;
+    background: none;
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
+    color: white;
+    font-size: 16px;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-right: 16px;
+    transition: all 0.2s ease;
+  }
+  
+  .back-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .chat-header h2 {
+    flex: 1;
+    margin: 0;
+    font-size: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
+  }
+  
+  .connection-status {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+  }
+  
+  .status-connected {
+    color: #4ecdc4;
+    display: flex;
+    align-items: center;
+  }
+  
+  .status-connected::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background-color: #4ecdc4;
+    border-radius: 50%;
+    margin-right: 8px;
+    display: inline-block;
+  }
+  
+  .status-disconnected {
+    color: #ff6b6b;
     display: flex;
     align-items: center;
     gap: 8px;
   }
   
-  .back-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  .status-disconnected::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background-color: #ff6b6b;
+    border-radius: 50%;
+    margin-right: 8px;
+    display: inline-block;
   }
   
-  .connection-status .status-connected {
-    color: #10b981;
-    font-weight: 500;
-  }
-  
-  .connection-status .status-disconnected {
-    color: #b91c1c;
-    font-weight: 500;
-  }
-  
-  .connection-status .reconnect-button {
-    margin-left: 10px;
-    background: #3b82f6;
-    color: #ffffff;
-    padding: 4px 8px;
+  .reconnect-button {
+    background-color: #4a4a7c;
+    color: white;
     border: none;
+    padding: 4px 8px;
     border-radius: 4px;
     cursor: pointer;
-  }
-  
-  .connection-status .reconnect-button:hover {
-    background: #2563eb;
+    font-size: 12px;
   }
   
   .socket-error-banner {
-    background-color: #fee2e2;
-    color: #b91c1c;
-    padding: 10px;
-    border-radius: 8px;
-    text-align: center;
-    margin-bottom: 20px;
+    background-color: #ff6b6b;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
   
   .socket-error-banner button {
-    background: #3b82f6;
-    color: #ffffff;
-    padding: 4px 8px;
+    background-color: white;
+    color: #ff6b6b;
     border: none;
+    padding: 6px 12px;
     border-radius: 4px;
     cursor: pointer;
-    margin-left: 10px;
+    font-weight: 600;
   }
   
-  .socket-error-banner button:hover {
-    background: #2563eb;
+  .video-call-toggle {
+    padding: 10px 20px;
+    background-color: #f0f2f5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e1e4e8;
+    position: sticky;
+    top: 62px;
+    z-index: 9;
+  
+  
   }
   
-  .chat-loading, .chat-error {
-    text-align: center;
-    padding: 20px;
-    font-size: 18px;
-    color: #6b7280;
+  .show-video-call, .hide-video-call {
+    background-color: #1a1a2e;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
   }
   
-  .chat-error .back-button {
-    margin-top: 10px;
+  .show-video-call:hover {
+    background-color: #292952;
+    transform: translateY(-2px);
+  }
+  
+  .hide-video-call {
+    background-color: #ff6b6b;
+  }
+  
+  .hide-video-call:hover {
+    background-color: #ff5252;
+  }
+  
+  .call-status-indicator {
+    color: #4ecdc4;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+  }
+  
+  .call-status-indicator::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    background-color: #4ecdc4;
+    border-radius: 50%;
+    margin-right: 8px;
+    display: inline-block;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(78, 205, 196, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(78, 205, 196, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(78, 205, 196, 0);
+    }
   }
   
   .messages-container {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
-    background-color: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    scroll-behavior: smooth;
+    background-color: #f5f7fa;
+    transition: all 0.3s ease;
   }
   
-  .no-messages {
-    text-align: center;
-    color: #6b7280;
-    padding: 20px;
+  .messages-container.with-video-call {
+    height: calc(100vh - 380px);
+    min-height: 300px;
   }
   
   .message-date-group {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   
   .date-divider {
     text-align: center;
-    margin: 10px 0;
-    color: #9ca3af;
-    font-size: 14px;
+    margin: 20px 0;
+    position: relative;
+  }
+  
+  .date-divider::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    background-color: #e1e4e8;
+    z-index: 0;
   }
   
   .date-divider span {
-    background-color: #f9fafb;
+    background-color: #f5f7fa;
     padding: 0 10px;
+    position: relative;
+    z-index: 1;
+    color: #6c757d;
+    font-size: 14px;
   }
   
   .message-bubble {
-    margin: 10px 0;
-    padding: 12px;
-    border-radius: 10px;
-    max-width: 70%;
+    max-width: 75%;
+    margin-bottom: 12px;
+    padding: 10px 16px;
+    border-radius: 16px;
+    color: #333;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    animation: fadeIn 0.3s ease;
   }
   
-  .client-message {
-    background-color: #3b82f6;
-    color: #ffffff;
-    margin-left: auto;
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   
   .professional-message {
-    background-color: #e5e7eb;
-    color: #1f2937;
+    align-self: flex-start;
     margin-right: auto;
+    background-color: #fff;
+    border-bottom-left-radius: 4px;
+  }
+  
+  .client-message {
+    align-self: flex-end;
+    margin-left: auto;
+    background-color: #e7f3ff;
+    border-bottom-right-radius: 4px;
   }
   
   .message-header {
     display: flex;
     justify-content: space-between;
+    margin-bottom: 6px;
     font-size: 12px;
-    margin-bottom: 5px;
   }
   
   .message-sender {
     font-weight: 600;
+    color: #1a1a2e;
   }
   
   .message-time {
-    color: #9ca3af;
+    color: #6c757d;
   }
   
   .message-content {
-    font-size: 14px;
+    font-size: 15px;
+    line-height: 1.4;
   }
   
   .message-image {
-    margin-top: 5px;
-  }
-  
-  .message-image img {
-    max-width: 100%;
-    height: auto;
+    margin-top: 8px;
   }
   
   .message-document {
-    margin-top: 5px;
+    margin-top: 8px;
   }
   
   .message-document a {
-    color: #3b82f6;
-    text-decoration: none;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 5px;
+    padding: 8px 12px;
+    background-color: #f0f2f5;
+    border-radius: 8px;
+    color: #1a1a2e;
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.2s ease;
   }
   
   .message-document a:hover {
-    text-decoration: underline;
+    background-color: #e1e4e8;
+  }
+  
+  .no-messages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #6c757d;
+    text-align: center;
+    padding: 30px;
+  }
+  
+  .no-messages p:first-child {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  
+  .no-messages p:last-child {
+    font-size: 14px;
+    max-width: 400px;
   }
   
   .message-form {
     display: flex;
+    padding: 16px;
+    background-color: white;
+    border-top: 1px solid #e1e4e8;
     align-items: flex-end;
-    margin-top: 20px;
-    gap: 10px;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
   }
   
   .message-input-container {
-    display: flex;
-    align-items: center;
     flex: 1;
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    padding: 5px;
+    display: flex;
+    align-items: flex-end;
+    background-color: #f0f2f5;
+    border-radius: 20px;
+    padding: 8px 16px;
+    margin-right: 12px;
   }
   
   .file-upload-button {
-    background: #e5e7eb;
+    background: none;
     border: none;
-    padding: 8px;
-    border-radius: 8px;
-    font-size: 16px;
+    font-size: 20px;
     cursor: pointer;
-    margin-right: 5px;
+    padding: 0;
+    margin-right: 12px;
+    color: #6c757d;
+    transition: all 0.2s ease;
   }
   
   .file-upload-button:hover {
-    background: #d1d5db;
+    color: #1a1a2e;
   }
   
   .file-upload-button:disabled {
-    background: #f3f4f6;
+    color: #adb5bd;
     cursor: not-allowed;
   }
   
   .message-input {
     flex: 1;
     border: none;
-    outline: none;
-    padding: 10px;
-    font-size: 14px;
+    background: none;
     resize: none;
-    height: 40px;
-    background: transparent;
+    padding: 8px 0;
+    max-height: 120px;
+    min-height: 24px;
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.4;
+    color: #333;
+  }
+  
+  .message-input:focus {
+    outline: none;
+  }
+  
+  .message-input::placeholder {
+    color: #adb5bd;
   }
   
   .message-input:disabled {
-    background: #f3f4f6;
-    cursor: not-allowed;
+    opacity: 0.7;
   }
   
   .send-button {
-    background: linear-gradient(90deg, #3b82f6, #10b981);
-    color: #ffffff;
-    padding: 10px 20px;
+    background-color: #1a1a2e;
+    color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
+    padding: 12px 20px;
+    border-radius: 20px;
     cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    min-width: 80px;
   }
   
   .send-button:hover {
-    background: linear-gradient(90deg, #2563eb, #059669);
+    background-color: #292952;
+    transform: translateY(-2px);
   }
   
   .send-button:disabled {
-    background: #d1d5db;
+    background-color: #adb5bd;
     cursor: not-allowed;
-  }
-  /* Add these to your existing ConversationChat.css */
-
-.video-call-toggle {
-    display: flex;
-    justify-content: center;
-    padding: 10px 0;
-    background-color: #f5f5f5;
-    border-bottom: 1px solid #ddd;
+    transform: none;
   }
   
-  .video-call-toggle button {
-    padding: 8px 16px;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.2s ease;
-  }
-  
-  .show-video-call {
-    background-color: #4285f4;
-    color: white;
-  }
-  
-  .hide-video-call {
-    background-color: #f44336;
-    color: white;
-  }
-  
-  /* Adjust the messages container when video call is shown */
-  .messages-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 15px;
-    background-color: #f5f5f5;
-    max-height: calc(100vh - 260px); /* Adjust based on your layout */
-  }
-  
-  /* Add these to your existing ConversationChat.css */
-
-.video-call-toggle {
+  .chat-loading {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid #e0e0e0;
-    background-color: #f9f9f9;
+    height: 100vh;
+    font-size: 18px;
+    color: #6c757d;
   }
   
-  .show-video-call, .hide-video-call {
-    padding: 8px 16px;
-    border-radius: 50px;
+  .chat-error {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-size: 18px;
+    color: #ff6b6b;
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .chat-error p {
+    margin-bottom: 20px;
+  }
+  
+  /* IncomingCallDialog styles */
+  .incoming-call-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #1a1a2e;
+    color: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    width: 350px;
+    text-align: center;
+    animation: slideIn 0.3s ease;
+  }
+  
+  @keyframes slideIn {
+    from { transform: translate(-50%, -70%); opacity: 0; }
+    to { transform: translate(-50%, -50%); opacity: 1; }
+  }
+  
+  .incoming-call-dialog h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 22px;
+  }
+  
+  .caller-info {
+    margin-bottom: 24px;
+    font-size: 18px;
+  }
+  
+  .incoming-call-dialog-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+  }
+  
+  .accept-call-button {
+    background-color: #4ecdc4;
+    color: white;
     border: none;
+    padding: 12px 24px;
+    border-radius: 30px;
     cursor: pointer;
-    font-weight: bold;
-    font-size: 14px;
-    transition: all 0.2s ease;
+    font-weight: 600;
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
+    transition: all 0.2s ease;
   }
   
-  .show-video-call {
-    background-color: #2196F3;
+  .accept-call-button:hover {
+    background-color: #33b9b0;
+    transform: translateY(-2px);
+  }
+  
+  .reject-call-button {
+    background-color: #ff6b6b;
     color: white;
-  }
-  
-  .show-video-call:hover {
-    background-color: #0d8bf2;
-  }
-  
-  .hide-video-call {
-    background-color: #f44336;
-    color: white;
-  }
-  
-  .hide-video-call:hover {
-    background-color: #e53935;
-  }
-  
-  .call-status-indicator {
-    display: inline-flex;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
     align-items: center;
-    background-color: #4caf50;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 20px;
-    font-size: 14px;
-    margin-left: 10px;
-    animation: pulse 1.5s infinite;
+    gap: 8px;
+    transition: all 0.2s ease;
   }
   
-  .call-status-indicator::before {
-    content: "";
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    background-color: white;
-    border-radius: 50%;
-    margin-right: 8px;
+  .reject-call-button:hover {
+    background-color: #ff5252;
+    transform: translateY(-2px);
   }
   
-  @keyframes pulse {
-    0% { opacity: 0.7; }
-    50% { opacity: 1; }
-    100% { opacity: 0.7; }
+  .incoming-call-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    animation: fadeIn 0.3s ease;
   }
   
-  /* Adjust message container height when video call is visible */
-  .messages-container.with-video-call {
-    max-height: calc(100vh - 600px);
-    min-height: 200px;
-  }
-  
-  /* Style for disabled buttons */
-  .video-call-toggle button:disabled {
-    background-color: #cccccc;
-    color: #666666;
-    cursor: not-allowed;
+  @media (max-width: 768px) {
+    .chat-header h2 {
+      font-size: 18px;
+      max-width: 50%;
+    }
+    
+    .message-bubble {
+      max-width: 85%;
+    }
+    
+    .messages-container.with-video-call {
+      height: calc(100vh - 350px);
+      min-height: 200px;
+    }
+    
+    .message-form {
+      padding: 12px;
+    }
+    
+    .send-button {
+      padding: 10px 16px;
+      min-width: 70px;
+    }
+    
+    .incoming-call-dialog {
+      width: 300px;
+      padding: 20px;
+    }
   }

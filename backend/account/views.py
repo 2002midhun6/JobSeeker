@@ -147,7 +147,9 @@ class FileUploadView(APIView):
                 content=''
             )
             logger.info(f"Created message with file: message_id={message.id}, file_type={file_type}")
-
+            if message.file:
+                message.file_absolute_url = request.build_absolute_uri(message.file.url)
+                message.save(update_fields=['file_absolute_url'])
             # Send a WebSocket notification
             from channels.layers import get_channel_layer
             from asgiref.sync import async_to_sync
@@ -161,7 +163,7 @@ class FileUploadView(APIView):
                 'sender_name': message.sender.name,
                 'sender_role': message.sender.role,
                 'content': message.content,
-                'file_url': request.build_absolute_uri(message.file.url) if message.file else None,
+                'file_url': message.file_absolute_url or (request.build_absolute_uri(message.file.url) if message.file else None),
                 'file_type': message.file_type,
                 'created_at': message.created_at.isoformat(),
                 'is_read': False
@@ -175,12 +177,46 @@ class FileUploadView(APIView):
                 }
             )
             
-            serializer = MessageSerializer(message)
+            serializer = MessageSerializer(message, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
+            
         except Exception as e:
             logger.error(f"File upload error: {str(e)}")
             return Response({'error': f"Failed to upload file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class FileRecoveryView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        message_id = request.data.get('message_id')
+        
+        try:
+            message = Message.objects.get(id=message_id)
+            
+            # Check permissions
+            conversation = message.conversation
+            job = conversation.job
+            if not (request.user == job.client_id or JobApplication.objects.filter(
+                job_id=job, professional_id=request.user, status='Accepted'
+            ).exists()):
+                return Response({'error': 'Not authorized'}, status=403)
+            
+            # If the file exists but URL is missing
+            if message.file and not message.file_absolute_url:
+                file_url = request.build_absolute_uri(message.file.url)
+                message.file_absolute_url = file_url
+                message.save(update_fields=['file_absolute_url'])
+                return Response({'success': True, 'new_url': file_url})
+                
+            # If file exists and URL is present
+            elif message.file and message.file_absolute_url:
+                return Response({'success': True, 'new_url': message.file_absolute_url})
+                
+            # File is missing
+            else:
+                return Response({'error': 'File not found'}, status=404)
+                
+        except Message.DoesNotExist:
+            return Response({'error': 'Message not found'}, status=404)
 class CreateMissingConversationsView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -227,7 +263,8 @@ class ConversationView(APIView):
             
             serializer = ConversationSerializer(conversation)
             return Response(serializer.data, status=status.HTTP_200_OK)
-            
+            serializer = MessageSerializer(messages, many=True, context={'request': request})
+            return Response(serializer.data)  
         except Job.DoesNotExist:
             return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1230,6 +1267,7 @@ class VerifyPaymentView(APIView):
                 # Initial payment: Accept application and assign job
                 application.status = 'Accepted'
                 job.status = 'Assigned'
+                job.professional_id = application.professional_id
                 application.save()
                 job.save()
                 # Reject other applications

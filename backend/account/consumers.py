@@ -262,7 +262,7 @@ class WebRTCSignalingConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
             logger.info(f"WebRTC message received: type={data.get('type')}, from={data.get('sender_id', 'Unknown')}")
-            
+            logger.info(f"WebRTC message sent to group: type={data['type']}, to={data.get('to')}")
             if 'type' not in data:
                 logger.error("Missing 'type' key in WebRTC message")
                 await self.send(text_data=json.dumps({

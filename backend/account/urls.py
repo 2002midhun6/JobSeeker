@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterView, LoginView, LogoutView, VerifyOTPView, ForgotPasswordView, ResetPasswordView, AcceptJobApplicationView, JobDetailView, RequestVerificationView, AdminVerifyProfessionalView, ProfessionalJobApplicationsView, SubmitReviewView, AdminJobsView, ComplaintListCreateView, AdminComplaintListView, ConversationView, UnreadMessagesCountView, CreateMissingConversationsView, FileUploadView
+from .views import RegisterView, LoginView, LogoutView, VerifyOTPView, ForgotPasswordView, ResetPasswordView, AcceptJobApplicationView, JobDetailView, RequestVerificationView, AdminVerifyProfessionalView, ProfessionalJobApplicationsView, SubmitReviewView, AdminJobsView, ComplaintListCreateView, AdminComplaintListView, ConversationView, UnreadMessagesCountView, CreateMissingConversationsView, FileUploadView,FileRecoveryView
 from .views import CheckAuthView, BlockUnblockUserView, ListUsersView, ProfessionalProfileView, JobCreateView, OpenJobsListView, ApplyToJobView, ClientProjectsView, JobApplicationsListView, AdminVerificationRequestsView, VerifyPaymentView, ClientPendingPaymentsView, ClientTransactionHistoryView, ComplaintDetailView, ProfessionalTransactionHistoryView, UserConversationsView, CheckJobStatesView, WebSocketAuthTokenView
 
 urlpatterns = [
@@ -40,4 +40,5 @@ urlpatterns = [
     path('check-job-states/', CheckJobStatesView.as_view(), name='check_job_states'),
     path('ws-auth-token/', WebSocketAuthTokenView.as_view(), name='ws-auth-token'),
     path('conversations/job/<int:job_id>/file/', FileUploadView.as_view(), name='file-upload'),
+    path('conversations/file-recovery/', FileRecoveryView.as_view(), name='file-recovery'),
 ]
