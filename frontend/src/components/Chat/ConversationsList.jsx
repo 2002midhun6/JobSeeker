@@ -23,6 +23,7 @@ function ConversationsList({ userType = 'client' }) {
           
           // Log debug info for troubleshooting
           console.log('Debug info:', response.data.debug_info);
+          
         } else {
           setConversations(response.data); // For backward compatibility
         }

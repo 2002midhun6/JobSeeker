@@ -561,6 +561,7 @@ class CheckAuthView(APIView):
 
             return Response({
                 'user': {
+                    'id':user.id,
                     'email': user.email,
                     'name': user.name,
                     'role': user.role,
@@ -623,10 +624,12 @@ class LoginView(APIView):
             return Response({'error': 'Blocked account'}, status=status.HTTP_401_UNAUTHORIZED)
         if not user.is_verified and not user.is_superuser:
             return Response({'error': 'Please verify your email before logging in.'}, status=status.HTTP_401_UNAUTHORIZED)
-
+        
+      
         refresh = RefreshToken.for_user(user)
         response = Response({
             'user': {
+                'id':user.id,
                 'email': user.email,
                 'name': user.name,
                 'role': user.role,

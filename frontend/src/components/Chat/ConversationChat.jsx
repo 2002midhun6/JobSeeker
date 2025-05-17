@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef,useContext } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import './ConversationChat.css';
 import VideoCall from '../vediocall/VedioCall';
-import IncomingCallDialog from '../vediocall/IncomingCallDialog';
+import './ConversationChat.css';
+import { AuthContext } from '../../context/AuthContext';
 
 // Modal Component for Image Enlargement
 function ImageModal({ isOpen, onClose, imageSrc }) {
@@ -21,7 +21,6 @@ function ImageModal({ isOpen, onClose, imageSrc }) {
 
 function ConversationChat() {
   const { jobId } = useParams();
-  const location = useLocation();
   const [job, setJob] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -32,28 +31,15 @@ function ConversationChat() {
   const [socketRetries, setSocketRetries] = useState(0);
   const [socketError, setSocketError] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
-  const [showVideoCall, setShowVideoCall] = useState(false);
-  const [incomingCall, setIncomingCall] = useState(null);
-  const [callStatus, setCallStatus] = useState('idle');
-  const [modalOpen, setModalOpen] = useState(false); // State for modal visibility
-  const [modalImageSrc, setModalImageSrc] = useState(''); // State for image source
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalImageSrc, setModalImageSrc] = useState('');
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  const videoCallRef = useRef(null);
   const navigate = useNavigate();
-  const currentCallerRef = useRef(null);
-
+  const [showVideoCall, setShowVideoCall] = useState(false);
   const MAX_SOCKET_RETRIES = 5;
   const RETRY_DELAY = 2000;
-
-  useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const callAction = queryParams.get('call');
-    if (callAction === 'accept') {
-      setShowVideoCall(true);
-      setCallStatus('active');
-    }
-  }, [location]);
+const { user} = useContext(AuthContext); 
 
   const addSystemMessage = (content) => {
     const systemMessage = {
@@ -72,9 +58,10 @@ function ConversationChat() {
         const response = await axios.get('http://localhost:8000/api/check-auth/', {
           withCredentials: true,
         });
-        console.log('User info structure:', response.data);
+        
+        
         setUserInfo({
-          id: response.data.user.id,
+          id:response.data.user.id,
           name: response.data.user.name,
           role: response.data.user.role,
           email: response.data.user.email,
@@ -168,10 +155,6 @@ function ConversationChat() {
             try {
               const data = JSON.parse(event.data);
               console.log('Received:', data);
-
-              if (data.type === 'call-request') {
-                console.log('Received call request in chat WebSocket:', data);
-              }
 
               if (data.event === 'user_joined' || data.event === 'user_left') {
                 console.log(`User ${data.event}:`, data);
@@ -325,73 +308,6 @@ function ConversationChat() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  useEffect(() => {
-    console.log('Call status changed:', callStatus);
-    console.log('Current caller:', currentCallerRef.current);
-    console.log('Incoming call state:', incomingCall);
-    console.log('Show video call:', showVideoCall);
-  }, [callStatus, incomingCall, showVideoCall]);
-
-  const handleIncomingCall = (caller) => {
-    console.log('Incoming call from:', caller);
-    addSystemMessage(`${caller.name} is calling...`);
-    setIncomingCall(caller);
-    currentCallerRef.current = caller;
-    setCallStatus('incoming');
-    console.log('Call status set to incoming, expecting dialog to show');
-  };
-
-  const handleAcceptCall = () => {
-    console.log('Call accepted in ConversationChat, caller info:', incomingCall || currentCallerRef.current);
-    setShowVideoCall(true);
-    setCallStatus('active');
-    const callerToUse = incomingCall || currentCallerRef.current;
-    currentCallerRef.current = callerToUse;
-    console.log('Accepting call for caller:', callerToUse);
-    setTimeout(() => {
-      if (videoCallRef.current) {
-        console.log('Passing caller to acceptCall:', callerToUse);
-        videoCallRef.current.acceptCall(callerToUse);
-      } else {
-        console.error('videoCallRef is not available yet, retrying...');
-        setTimeout(() => {
-          if (videoCallRef.current) {
-            videoCallRef.current.acceptCall(callerToUse);
-          } else {
-            console.error('videoCallRef still not available after retry');
-          }
-        }, 1000);
-      }
-    }, 500);
-  };
-
-  const handleRejectCall = () => {
-    console.log('Call rejected in ConversationChat');
-    setCallStatus('idle');
-    const callerToReject = incomingCall || currentCallerRef.current;
-    setIncomingCall(null);
-    if (videoCallRef.current && callerToReject) {
-      videoCallRef.current.rejectCall(callerToReject);
-    }
-    currentCallerRef.current = null;
-  };
-
-  const handleCallEnded = (reason) => {
-    console.log('Call ended:', reason);
-    setCallStatus('idle');
-    setIncomingCall(null);
-    currentCallerRef.current = null;
-    setTimeout(() => {
-      if (callStatus !== 'active') {
-        setShowVideoCall(false);
-      }
-    }, 3000);
-  };
-
-  const toggleVideoCall = () => {
-    setShowVideoCall(!showVideoCall);
-  };
-
   const groupMessagesByDate = () => {
     const groups = {};
     messages.forEach((message) => {
@@ -404,7 +320,6 @@ function ConversationChat() {
 
   const messageGroups = groupMessagesByDate();
 
-  // Functions to open and close the modal
   const openImageModal = (imageSrc) => {
     setModalImageSrc(imageSrc);
     setModalOpen(true);
@@ -414,7 +329,17 @@ function ConversationChat() {
     setModalOpen(false);
     setModalImageSrc('');
   };
-
+  const toggleVideoCall = () => {
+    console.log("Toggling video call:", !showVideoCall); 
+    setShowVideoCall(prev => !prev);
+  };
+  
+  // Handle video call ending
+  const handleEndCall = () => {
+    console.log("Call ended, hiding video interface");
+    setShowVideoCall(false);
+  };
+  console.log('hello',userInfo)
   if (loading) return <div className="chat-loading">Loading conversation...</div>;
   if (error) return (
     <div className="chat-error">
@@ -423,6 +348,7 @@ function ConversationChat() {
     </div>
   );
   if (!userInfo) return <div className="chat-loading">Loading user info...</div>;
+ 
 
   return (
     <div className="chat-container">
@@ -431,7 +357,17 @@ function ConversationChat() {
         <h2>{job?.title || 'Chat'}</h2>
         <div className="connection-status">
           {socketConnected ? (
-            <span className="status-connected">Connected</span>
+            <>
+              <span className="status-connected">Connected</span>
+              {/* Video call button with clear visual state */}
+              <button 
+                onClick={toggleVideoCall} 
+                className={`video-call-button ${showVideoCall ? 'active' : ''}`}
+                disabled={!socketConnected}
+              >
+                {showVideoCall ? '📵 Hide Video' : '📹 Video Call'}
+              </button>
+            </>
           ) : (
             <span className="status-disconnected">
               Disconnected
@@ -447,69 +383,21 @@ function ConversationChat() {
           <button onClick={handleReconnect}>Try Again</button>
         </div>
       )}
-
-      <IncomingCallDialog
-        caller={incomingCall || currentCallerRef.current}
-        onAccept={handleAcceptCall}
-        onReject={handleRejectCall}
-        isVisible={callStatus === 'incoming'}
-      />
-
-      <div className="video-call-toggle">
-        <button
-          onClick={toggleVideoCall}
-          className={showVideoCall ? 'hide-video-call' : 'show-video-call'}
-          disabled={callStatus === 'incoming'}
-        >
-          {callStatus === 'active' ? (
-            <>📹 {showVideoCall ? 'Hide Video Call' : 'Show Video Call'}</>
-          ) : (
-            <>📹 {showVideoCall ? 'Hide Video Call' : 'Start Video Call'}</>
-          )}
-        </button>
-        {callStatus === 'active' && <span className="call-status-indicator">Call in progress</span>}
-      </div>
-
-      {(showVideoCall || callStatus === 'active' || callStatus === 'incoming') && userInfo && (
-        <VideoCall
-          ref={videoCallRef}
-          jobId={jobId}
-          userName={userInfo.name}
-          userRole={userInfo.role}
-          userId={userInfo.id}
-          job={job}
-          onIncomingCall={handleIncomingCall}
-          onCallAccepted={() => {
-            console.log('Call accepted callback triggered');
-            setCallStatus('active');
-            setIncomingCall(null);
-          }}
-          onCallRejected={() => {
-            console.log('Call rejected callback triggered');
-            setCallStatus('idle');
-            setIncomingCall(null);
-            currentCallerRef.current = null;
-          }}
-          onCallEnded={(reason) => {
-            console.log('Call ended callback triggered:', reason);
-            setCallStatus('idle');
-            setIncomingCall(null);
-            currentCallerRef.current = null;
-            setTimeout(() => {
-              if (callStatus !== 'active') {
-                setShowVideoCall(false);
-              }
-            }, 3000);
-          }}
-          onCallInitiated={() => {
-            addSystemMessage('You initiated a call');
-          }}
-          callStatus={callStatus}
-          acceptedCall={callStatus === 'active'}
-        />
+      
+      {/* Make the video call wrapper more prominent */}
+      {showVideoCall && (
+        <div className="video-call-wrapper">
+          <h3 className="video-call-header">Video Call</h3>
+          
+          <VideoCall 
+            jobId={jobId} 
+            userInfo={userInfo} 
+            onEndCall={handleEndCall} 
+          />
+        </div>
       )}
 
-      <div className={`messages-container ${showVideoCall ? 'with-video-call' : ''}`}>
+      <div className="messages-container">
         {Object.keys(messageGroups).length === 0 ? (
           <div className="no-messages">
             <p>No messages yet</p>
@@ -546,7 +434,7 @@ function ConversationChat() {
                             src={getValidFileUrl(message.file_url)}
                             alt="Uploaded image"
                             style={{ maxWidth: '200px', borderRadius: '8px', cursor: 'pointer' }}
-                            onClick={() => openImageModal(getValidFileUrl(message.file_url))} // Open modal on click
+                            onClick={() => openImageModal(getValidFileUrl(message.file_url))}
                             onError={async (e) => {
                               console.error('Image failed to load:', message.file_url);
                               const recoveredUrl = await recoverFile(message.id);
@@ -626,7 +514,6 @@ function ConversationChat() {
         </button>
       </form>
 
-      {/* Render the ImageModal */}
       <ImageModal isOpen={modalOpen} onClose={closeImageModal} imageSrc={modalImageSrc} />
     </div>
   );

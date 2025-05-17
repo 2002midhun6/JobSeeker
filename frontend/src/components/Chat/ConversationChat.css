@@ -489,98 +489,62 @@ html, body, #root, [class*="app-container"], [class*="router-container"] {
     to { transform: translate(-50%, -50%); opacity: 1; }
   }
   
-  .incoming-call-dialog h3 {
-    margin-top: 0;
-    margin-bottom: 16px;
-    font-size: 22px;
-  }
-  
-  .caller-info {
-    margin-bottom: 24px;
-    font-size: 18px;
-  }
-  
-  .incoming-call-dialog-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-  }
-  
-  .accept-call-button {
-    background-color: #4ecdc4;
+  /* Add to ConversationChat.css */
+/* Add to ConversationChat.css */
+.video-call-button {
+    margin-left: 10px;
+    background-color: #4CAF50;
     color: white;
     border: none;
-    padding: 12px 24px;
-    border-radius: 30px;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 14px;
     cursor: pointer;
-    font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 8px;
-    transition: all 0.2s ease;
+    gap: 4px;
   }
   
-  .accept-call-button:hover {
-    background-color: #33b9b0;
-    transform: translateY(-2px);
+  .video-call-button:hover {
+    background-color: #45a049;
   }
   
-  .reject-call-button {
-    background-color: #ff6b6b;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 30px;
-    cursor: pointer;
-    font-weight: 600;
+  .video-call-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  
+  .video-call-wrapper {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin: 10px 0;
+    overflow: hidden;
+  }
+  
+  /* When video call is active, adjust messages container */
+  .video-call-wrapper + .messages-container {
+    max-height: calc(100vh - 600px);
+  }
+  .video-call-wrapper {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin: 10px 0;
+    overflow: hidden;
+    min-height: 550px;
     display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s ease;
+    flex-direction: column;
   }
   
-  .reject-call-button:hover {
-    background-color: #ff5252;
-    transform: translateY(-2px);
+  .video-call-header {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    margin: 0;
+    font-weight: bold;
   }
   
-  .incoming-call-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999;
-    animation: fadeIn 0.3s ease;
-  }
-  
-  @media (max-width: 768px) {
-    .chat-header h2 {
-      font-size: 18px;
-      max-width: 50%;
-    }
-    
-    .message-bubble {
-      max-width: 85%;
-    }
-    
-    .messages-container.with-video-call {
-      height: calc(100vh - 350px);
-      min-height: 200px;
-    }
-    
-    .message-form {
-      padding: 12px;
-    }
-    
-    .send-button {
-      padding: 10px 16px;
-      min-width: 70px;
-    }
-    
-    .incoming-call-dialog {
-      width: 300px;
-      padding: 20px;
-    }
+  /* Adjust messages container when video call is active */
+  .video-call-wrapper + .messages-container {
+    max-height: 30vh;
+    min-height: 200px;
   }
