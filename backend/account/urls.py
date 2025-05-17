@@ -1,7 +1,10 @@
 from django.urls import path
 from .views import RegisterView, LoginView, LogoutView, VerifyOTPView, ForgotPasswordView, ResetPasswordView, AcceptJobApplicationView, JobDetailView, RequestVerificationView, AdminVerifyProfessionalView, ProfessionalJobApplicationsView, SubmitReviewView, AdminJobsView, ComplaintListCreateView, AdminComplaintListView, ConversationView, UnreadMessagesCountView, CreateMissingConversationsView, FileUploadView,FileRecoveryView
 from .views import CheckAuthView, BlockUnblockUserView, ListUsersView, ProfessionalProfileView, JobCreateView, OpenJobsListView, ApplyToJobView, ClientProjectsView, JobApplicationsListView, AdminVerificationRequestsView, VerifyPaymentView, ClientPendingPaymentsView, ClientTransactionHistoryView, ComplaintDetailView, ProfessionalTransactionHistoryView, UserConversationsView, CheckJobStatesView, WebSocketAuthTokenView
+from .views import UserCountsView, JobCountsView,PaymentTotalView,ResendOTPView
 
+
+    
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),
@@ -41,4 +44,8 @@ urlpatterns = [
     path('ws-auth-token/', WebSocketAuthTokenView.as_view(), name='ws-auth-token'),
     path('conversations/job/<int:job_id>/file/', FileUploadView.as_view(), name='file-upload'),
     path('conversations/file-recovery/', FileRecoveryView.as_view(), name='file-recovery'),
+   path('users/counts/', UserCountsView.as_view(), name='user-counts'),
+    path('jobs/counts/', JobCountsView.as_view(), name='job-counts'),
+    path('payments/total/', PaymentTotalView.as_view(), name='payment-total'),
+      path('resend-otp/', ResendOTPView.as_view(), name='resend-otp'),
 ]

@@ -1,13 +1,65 @@
-/* src/pages/AdminDashboard.css */
 .admin-dashboard {
-    display: flex;
-    flex-direction: column;
     min-height: 100vh;
-  /* Ensure the dashboard takes full viewport height */
+    background-color: #f4f4f4;
+    padding: 20px;
   }
   
   main {
-    flex: 1; /* Grow to fill remaining space */
-    padding: 20px;
-    background-color: #f5f5f5; /* Optional: Add a background color */
+    max-width: 1200px;
+    margin: 0 auto;
   }
+  
+  h1 {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  
+  .loading-message,
+  .error-message {
+    text-align: center;
+    font-size: 1.2rem;
+    margin: 20px 0;
+  }
+  
+  .error-message {
+    color: #d32f2f;
+  }
+  
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+  }
+  
+  .metric-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .metric-card h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 10px;
+  }
+  
+  .metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+  }
+  
+  .metric-card:nth-child(1) .metric-value { color: #007bff; }
+  .metric-card:nth-child(2) .metric-value { color: #28a745; }
+  .metric-card:nth-child(3) .metric-value { color: #17a2b8; }
+  .metric-card:nth-child(4) .metric-value { color: #dc3545; }
+  .metric-card:nth-child(5) .-by-default .metric-value { color: #6f42c1; }
+  .metric-card:nth-child(6) .metric-value { color: #fd7e14; }
+  .metric-card:nth-child(7) .metric-value { color: #20c997; }
+  .metric-card:nth-child(8) .metric-value { color: #6610f2; }
+  .metric-card:nth-child(9) .metric-value { color: #e83e8c; }

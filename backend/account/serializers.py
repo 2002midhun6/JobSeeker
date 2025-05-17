@@ -13,6 +13,7 @@ from .models import Complaint,Conversation,Message
 from rest_framework import serializers
 from .models import Message
 
+
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()
     sender_role = serializers.SerializerMethodField()

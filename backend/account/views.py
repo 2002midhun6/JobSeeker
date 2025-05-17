@@ -22,6 +22,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 import jwt
+from django.db.models import Sum
 from django.conf import settings
 import logging
 from rest_framework.permissions import IsAuthenticated
@@ -47,9 +48,50 @@ from .serializers import ConversationSerializer, MessageSerializer
 # Add this to account/views.py
 from django.contrib.auth import get_user_model
 
+class UserCountsView(APIView):
+    permission_classes = [IsAdminUser]
+    def get(self, request):
+        professional_count = CustomUser.objects.filter(role='professional').count()
+        client_count = CustomUser.objects.filter(role='client').count()
+        pending_complaints = Complaint.objects.filter(status='Pending').count()
+        verified_professionals = CustomUser.objects.filter(
+            role='professional', 
+            professionalprofile__verify_status='Verified'
+        ).count()
+        return Response({
+            'professionals': professional_count,
+            'clients': client_count,
+            'pending_complaints': pending_complaints,
+            'verified_professionals': verified_professionals
+        }, status=status.HTTP_200_OK)
 
+class JobCountsView(APIView):
+    permission_classes = [IsAdminUser]
+    def get(self, request):
+        total_jobs = Job.objects.count()
+        completed_jobs = Job.objects.filter(status='Completed').count()
+        active_applications = JobApplication.objects.filter(
+            status__in=['Pending', 'Accepted']
+        ).count()
+        # Active conversations: Conversations with messages in the last 30 days
+        recent_threshold = datetime.now() - timedelta(days=30)
+        active_conversations = Conversation.objects.filter(
+            messages__created_at__gte=recent_threshold
+        ).distinct().count()
+        return Response({
+            'total_jobs': total_jobs,
+            'completed_jobs': completed_jobs,
+            'active_applications': active_applications,
+            'active_conversations': active_conversations
+        }, status=status.HTTP_200_OK)
 
-
+class PaymentTotalView(APIView):
+    permission_classes = [IsAdminUser]
+    def get(self, request):
+        total_payments = Payment.objects.aggregate(total=Sum('amount'))['total'] or 0
+        return Response({
+            'total_payments': total_payments
+        }, status=status.HTTP_200_OK)
 logger = logging.getLogger('django')
 CustomUser = get_user_model()
 class WebSocketAuthTokenView(APIView):
@@ -314,9 +356,9 @@ class UnreadMessagesCountView(APIView):
             jobs = Job.objects.filter(client_id=user)
             conversations = Conversation.objects.filter(job__in=jobs)
         else:
-            applications = JobApplication.objects.filter(professional_id=user, status='Accepted')
-            jobs = Job.objects.filter(job_id__in=applications.values('job_id'))
-            conversations = Conversation.objects.filter(job__in=conversations)
+           
+            jobs = Job.objects.filter(professional_id=user)
+            conversations = Conversation.objects.filter(job__in=jobs)
         
         unread_count = Message.objects.filter(
             conversation__in=conversations,
@@ -671,7 +713,7 @@ class LogoutView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 class VerifyOTPView(APIView):
-    permission_classes = [AllowAny]  # Allow unauthenticated access
+    permission_classes = [AllowAny]
     authentication_classes = []
     def post(self, request):
         serializer = OTPVerificationSerializer(data=request.data)
@@ -679,27 +721,37 @@ class VerifyOTPView(APIView):
             return Response({'message': 'Email verified successfully!'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# Existing views remain unchanged...
-
-class ForgotPasswordView(APIView):
-    permission_classes = [AllowAny]  # Allow unauthenticated access
+class ResendOTPView(APIView):
+    permission_classes = [AllowAny]
     authentication_classes = []
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
         if serializer.is_valid():
-            # Remove this line: serializer.validate(serializer.validated_data)
+            return Response(
+                {'message': 'OTP resent successfully to your email.'},
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ForgotPasswordView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        if serializer.is_valid():
             return Response(
                 {'message': 'OTP sent to your email for password reset.'},
                 status=status.HTTP_200_OK
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class ResetPasswordView(APIView):
-    permission_classes = [AllowAny]  # Allow unauthenticated access
+    permission_classes = [AllowAny]
     authentication_classes = []
     def post(self, request):
         serializer = ResetPasswordSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()  # Update the password
+            serializer.save()
             return Response(
                 {'message': 'Password reset successfully! You can now log in.'},
                 status=status.HTTP_200_OK

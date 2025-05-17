@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect,useContext } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
@@ -8,10 +8,13 @@ function Login() {
   const { dispatch } = useContext(AuthContext);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
-  const [forgotPassword, setForgotPassword] = useState(false); // Toggle forgot password flow
+  const [forgotPassword, setForgotPassword] = useState(false);
   const [resetData, setResetData] = useState({ email: '', otp: '', new_password: '' });
   const [message, setMessage] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [isResendLoading, setIsResendLoading] = useState(false);
+  const [isResendDisabled, setIsResendDisabled] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -25,6 +28,8 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setError('');
+      setMessage('');
       const response = await axios.post('http://localhost:8000/api/login/', formData, {
         withCredentials: true,
       });
@@ -49,12 +54,13 @@ function Login() {
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     try {
+      setError('');
+      setMessage('');
       const response = await axios.post('http://localhost:8000/api/forgot-password/', {
         email: resetData.email,
       });
       setMessage(response.data.message);
-      setOtpSent(true); // Set this flag when OTP is sent
-      setError('');
+      setOtpSent(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to send OTP');
     }
@@ -63,20 +69,54 @@ function Login() {
   const handleResetPassword = async (e) => {
     e.preventDefault();
     try {
+      setError('');
+      setMessage('');
       const response = await axios.post('http://localhost:8000/api/reset-password/', resetData);
       setMessage(response.data.message);
-      setError('');
-      // Reset everything on success
       setTimeout(() => {
         setForgotPassword(false);
         setResetData({ email: '', otp: '', new_password: '' });
         setOtpSent(false);
         setMessage('');
-      }, 3000); // Show success message for 3 seconds
+      }, 3000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to reset password');
     }
   };
+
+  const handleResendOTP = async () => {
+    if (isResendDisabled || isResendLoading || !resetData.email) return;
+    try {
+      setError('');
+      setMessage('');
+      setIsResendLoading(true);
+      const response = await axios.post('http://localhost:8000/api/resend-otp/', {
+        email: resetData.email,
+      });
+      setMessage(response.data.message);
+      setIsResendDisabled(true);
+      setCooldown(60);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to resend OTP');
+    } finally {
+      setIsResendLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => {
+        setCooldown((prev) => {
+          if (prev <= 1) {
+            setIsResendDisabled(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
 
   return (
     <div className="login-container">
@@ -137,7 +177,7 @@ function Login() {
                   required
                 />
               </div>
-              {otpSent &&  (
+              {otpSent && (
                 <>
                   <div className="form-group">
                     <label htmlFor="otp">OTP</label>
@@ -166,9 +206,21 @@ function Login() {
                 </>
               )}
               <button type="submit" className="login-button">
-                {resetData.otp ? 'Reset Password' : 'Send OTP'}
+                {otpSent ? 'Reset Password' : 'Send OTP'}
               </button>
             </form>
+            {otpSent && (
+              <p className="resend-otp-link">
+                Didn't receive a code?{' '}
+                <button
+                  onClick={handleResendOTP}
+                  className={`resend-link ${isResendDisabled || isResendLoading ? 'disabled' : ''}`}
+                  disabled={isResendDisabled || isResendLoading || !resetData.email}
+                >
+                  {isResendLoading ? 'Resending...' : isResendDisabled ? `Resend OTP (${cooldown}s)` : 'Resend OTP'}
+                </button>
+              </p>
+            )}
             <p className="back-to-login">
               <a href="#" onClick={() => setForgotPassword(false)}>Back to Login</a>
             </p>
