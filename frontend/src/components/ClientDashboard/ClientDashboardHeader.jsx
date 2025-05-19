@@ -5,7 +5,7 @@ import axios from 'axios';
 import './ClinetDashboardHeader.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExclamationCircle, faComments } from '@fortawesome/free-solid-svg-icons';
-
+import Notifications from '../Notification/Notification';
 function ClientHeader() {
   const { dispatch } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -78,7 +78,9 @@ function ClientHeader() {
               <span className="nav-icon">📊</span>
               <span className="nav-text">Dashboard</span>
             </Link>
+
           </li>
+        
           <li className={`nav-item ${isActive('/client-job')}`}>
             <Link to="/client-job" className="nav-link">
               <span className="nav-icon">📝</span>
@@ -108,6 +110,7 @@ function ClientHeader() {
               <span className="nav-text">Payment</span>
             </Link>
           </li>
+          
           <li className={`nav-item ${isActive('/client-transactions')}`}>
             <Link to="/client-transactions" className="nav-link">
               <span className="nav-icon">💸</span>
@@ -128,8 +131,12 @@ function ClientHeader() {
           <span className="btn-icon">🚪</span>
           <span className="btn-text">Logout</span>
         </button>
+       
       </div>
+      
+
     </header>
+    
   );
 }
 

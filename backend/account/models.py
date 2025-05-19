@@ -2,6 +2,7 @@
 # accounts/models.py
 
 import random
+import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.timezone import now
@@ -9,6 +10,28 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 # Add this to your existing models.py file
 
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('job_application', 'Job Application'),
+        ('payment', 'Payment'),
+        ('message', 'Message'),
+        ('job_status', 'Job Status Change'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    data = models.JSONField(blank=True, null=True)  # Additional structured data
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.notification_type} - {self.title[:30]}"
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, name, password=None, **extra_fields):
         if not email:

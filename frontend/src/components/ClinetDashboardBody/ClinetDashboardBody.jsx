@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { AuthContext } from '../../context/AuthContext';
 import './ClientDashboardBody.css';
+import Notifications from '../Notification/Notification';
 
 function ClientDashBoardContent() {
   const authContext = useContext(AuthContext);
@@ -59,13 +60,17 @@ function ClientDashBoardContent() {
     <div className="client-dashboard">
       <h1>Client Dashboard</h1>
       <p>Welcome to the Client Dashboard!</p>
+      
       {loading ? (
         <p>Loading project data...</p>
       ) : (
         <div className="project-counts-table">
+             <h1>Notifiactions <Notifications /></h1>
           <h2>Project Overview</h2>
+         
           <table>
             <thead >
+           
               <tr style={{color:'black'}}>
                 <th  style={{color:'black'}}>Project Status</th>
                 <th >Count</th>
@@ -79,8 +84,10 @@ function ClientDashBoardContent() {
               <tr>
                 <td>Completed Projects</td>
                 <td>{projectCounts.completed}</td>
+                
               </tr>
             </tbody>
+          
           </table>
         </div>
       )}

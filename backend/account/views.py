@@ -47,7 +47,60 @@ from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 # Add this to account/views.py
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+# accounts/views.py - Update your ApplyToJobView
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from .models import Notification
+from .serializers import NotificationSerializer
 
+class NotificationListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = NotificationSerializer
+    
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+class NotificationCountView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        unread_count = Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).count()
+        
+        return Response({"unread_count": unread_count})
+
+class MarkNotificationReadView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        notification_id = request.data.get('notification_id')
+        
+        if notification_id:
+            try:
+                notification = Notification.objects.get(id=notification_id, user=request.user)
+                notification.is_read = True
+                notification.save()
+                return Response({"success": True}, status=status.HTTP_200_OK)
+            except Notification.DoesNotExist:
+                return Response(
+                    {"error": "Notification not found"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            return Response(
+                {"error": "Notification ID is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class MarkAllNotificationsReadView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({"success": True}, status=status.HTTP_200_OK)
 class UserCountsView(APIView):
     permission_classes = [IsAdminUser]
     def get(self, request):
@@ -866,14 +919,83 @@ class OpenJobsListView(APIView):
         open_jobs = Job.objects.filter(status='Open')
         serializer = JobSerializer(open_jobs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 class ApplyToJobView(generics.CreateAPIView):
     queryset = JobApplication.objects.all()
     serializer_class = JobApplicationSerializer
     permission_classes = [IsAuthenticated]  
 
     def perform_create(self, serializer):
-   
-        serializer.save(professional_id=self.request.user)
+        # Save the application
+        application = serializer.save(professional_id=self.request.user)
+        
+        # Get job and client details
+        job = application.job_id
+        client = job.client_id
+        
+        # Get professional profile data
+        try:
+            profile = ProfessionalProfile.objects.get(user=self.request.user)
+            profile_data = ProfessionalProfileSerializer(profile).data
+        except ProfessionalProfile.DoesNotExist:
+            profile_data = {}
+        
+        # Create a database notification
+        notification_data = {
+            'job_id': job.job_id,
+            'job_title': job.title, 
+            'professional_id': self.request.user.id,
+            'professional_name': self.request.user.name,
+            'application_id': application.application_id,
+            'profile_data': {
+                'experience_years': profile_data.get('experience_years', 0),
+                'avg_rating': profile_data.get('avg_rating', 0),
+                'verify_status': profile_data.get('verify_status', 'Not Verified'),
+                'availability_status': profile_data.get('availability_status', 'Unknown')
+            }
+        }
+        
+        try:
+            # Create persistent notification
+            Notification.objects.create(
+                user=client,
+                notification_type='job_application',
+                title=f'New application for {job.title}',
+                message=f'{self.request.user.name} has applied for your job: {job.title}',
+                data=notification_data
+            )
+        except Exception as e:
+            print(f"Failed to create notification record: {str(e)}")
+        
+        # Send real-time notification via WebSocket
+        channel_layer = get_channel_layer()
+        
+        # Prepare notification data
+        ws_notification_data = {
+            'type': 'job_application',
+            'job_id': job.job_id,
+            'job_title': job.title,
+            'professional_id': self.request.user.id,
+            'professional_name': self.request.user.name,
+            'professional_email': self.request.user.email,
+            'application_id': application.application_id,
+            'timestamp': timezone.now().isoformat(),
+            'notification_id': str(application.application_id),
+            'profile_data': notification_data['profile_data']
+        }
+        
+        # Send notification to client's notification group
+        try:
+            async_to_sync(channel_layer.group_send)(
+                f'notifications_{client.id}',
+                {
+                    'type': 'send_notification',
+                    'content': ws_notification_data
+                }
+            )
+            print(f"Sent WebSocket notification to client {client.id} about new application {application.application_id}")
+        except Exception as e:
+            print(f"Failed to send WebSocket notification: {str(e)}")
 
 class JobDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1337,7 +1459,58 @@ class VerifyPaymentView(APIView):
                 message = 'Remaining payment verified and job completed successfully'
             else:
                 return Response({'error': 'Invalid payment type'}, status=status.HTTP_400_BAD_REQUEST)
+            # Add this to the VerifyPaymentView class in views.py
+# Inside the post method, after payment verification is successful
 
+# Create notification for the professional
+            professional = application.professional_id
+            notification_data = {
+                'job_id': job.job_id,
+                'job_title': job.title,
+                'payment_type': payment_type,
+                'amount': str(payment.amount),  # Convert to string for JSON serialization
+                'client_name': request.user.name,
+                'client_id': request.user.id
+            }
+
+            # Create persistent notification in database
+            notification = Notification.objects.create(
+                user=professional,
+                notification_type='payment',
+                title=f"{'Initial' if payment_type == 'initial' else 'Final'} payment received",
+                message=f"{request.user.name} has made the {'initial' if payment_type == 'initial' else 'final'} payment for job: {job.title}",
+                data=notification_data,
+                is_read=False
+            )
+
+            # Send real-time notification via WebSocket
+            try:
+                channel_layer = get_channel_layer()
+                
+                # Prepare notification data
+                ws_notification_data = {
+                    'type': 'payment',
+                    'payment_type': payment_type,
+                    'job_id': job.job_id,
+                    'job_title': job.title,
+                    'client_id': request.user.id,
+                    'client_name': request.user.name,
+                    'amount': str(payment.amount),
+                    'timestamp': timezone.now().isoformat(),
+                    'notification_id': str(notification.id)
+                }
+                
+                # Send notification to professional's notification group
+                async_to_sync(channel_layer.group_send)(
+                    f'notifications_{professional.id}',
+                    {
+                        'type': 'send_notification',
+                        'content': ws_notification_data
+                    }
+                )
+                print(f"Sent WebSocket notification to professional {professional.id} about payment {payment.id}")
+            except Exception as e:
+                print(f"Failed to send WebSocket notification: {str(e)}")
             return Response({'message': message}, status=status.HTTP_200_OK)
 
         except razorpay.errors.SignatureVerificationError:

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { AuthContext } from '../../context/AuthContext';
 import './ProfessionalDashboardBody.css';
-
+import ProfessionalNotifications from '../Notification/ProfessionalNotification';
 function ProfessionalDashBoardContent() {
   const { user, isAuthenticated} = useContext(AuthContext); 
   const navigate = useNavigate();
@@ -114,6 +114,7 @@ function ProfessionalDashBoardContent() {
   return (
     <div className="professional-dashboard">
       <h1>Professional Dashboard</h1>
+      <ProfessionalNotifications/>
       {hasProfile ? (
         <>
           <p style={{ color: 'white' }}>Welcome back to your Professional Dashboard, {user.name}!</p>

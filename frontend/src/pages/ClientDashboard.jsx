@@ -7,6 +7,7 @@ function ClientDashboard() {
     <div>
       
         <ClinetHeaderComp />
+        
         < ClientDashBoardContent />
       
         

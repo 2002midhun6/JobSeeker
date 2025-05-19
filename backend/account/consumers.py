@@ -481,3 +481,91 @@ class VideoCallConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             logger.error(f"Video call authorization error: {str(e)}")
             return False
+class NotificationConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        # Authorization similar to ChatConsumer
+        query_string = self.scope.get('query_string', b'').decode()
+        cookies = self.scope.get('cookies', {})
+        logger.info(f"Notification WebSocket connecting")
+        
+        self.user = None
+        token = cookies.get('access_token')
+        logger.info(f"Extracted access_token from cookies: {'Present' if token else 'Missing'}")
+        
+        if token:
+            try:
+                jwt_auth = JWTAuthentication()
+                validated_token = jwt_auth.get_validated_token(token)
+                self.user = await database_sync_to_async(jwt_auth.get_user)(validated_token)
+                logger.info(f"Authenticated user from cookie: {self.user.email} (ID: {self.user.id})")
+            except (InvalidToken, TokenError) as e:
+                logger.error(f"Token error: {str(e)}")
+            except Exception as e:
+                logger.error(f"Unexpected authentication error: {str(e)}")
+        
+        if not self.user and query_string:
+            try:
+                query_params = dict(urllib.parse.parse_qsl(query_string))
+                token = query_params.get('token')
+                if token:
+                    jwt_auth = JWTAuthentication()
+                    validated_token = jwt_auth.get_validated_token(token)
+                    self.user = await database_sync_to_async(jwt_auth.get_user)(validated_token)
+                    logger.info(f"Authenticated user from query string: {self.user.email} (ID: {self.user.id})")
+            except Exception as e:
+                logger.error(f"Query string authentication error: {str(e)}")
+        
+        if not self.user:
+            self.user = self.scope.get('user')
+            logger.info(f"Fallback to AuthMiddlewareStack user: {self.user if self.user else 'None'}")
+        
+        if not self.user or self.user.is_anonymous:
+            logger.error(f"Unauthenticated notification user")
+            await self.close(code=4001)
+            return
+        
+        logger.info(f"User {self.user.id} connected to notification service")
+        
+        # Create a personal notification group for this user
+        self.notification_group_name = f'notifications_{self.user.id}'
+        
+        # Join notification group
+        await self.channel_layer.group_add(
+            self.notification_group_name,
+            self.channel_name
+        )
+        
+        await self.accept()
+        logger.info(f"Notification WebSocket accepted for user {self.user.id}")
+
+    async def disconnect(self, close_code):
+        logger.info(f"Notification WebSocket disconnect: code={close_code}, user={getattr(self.user, 'email', 'Unknown')}")
+        
+        if hasattr(self, 'notification_group_name'):
+            await self.channel_layer.group_discard(
+                self.notification_group_name,
+                self.channel_name
+            )
+
+    async def receive(self, text_data):
+        # This consumer primarily listens for notifications, but we can handle client messages if needed
+        try:
+            data = json.loads(text_data)
+            logger.info(f"Received message from notification client: {data}")
+            
+            # Handle message acknowledgment if needed
+            if data.get('type') == 'mark_read':
+                notification_id = data.get('notification_id')
+                logger.info(f"User {self.user.id} marked notification {notification_id} as read")
+                # You could update a Notification model here if you implement it
+
+        except json.JSONDecodeError:
+            logger.error("Invalid JSON in notification websocket")
+        except Exception as e:
+            logger.error(f"Notification receive error: {str(e)}")
+
+    # Handler for notifications
+    async def send_notification(self, event):
+        # Send notification to WebSocket
+        await self.send(text_data=json.dumps(event["content"]))
+        logger.info(f"Sent notification to user {self.user.id}: {event['content'].get('type')}")

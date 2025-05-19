@@ -7,6 +7,7 @@ import './ProfessionalDashboardHeader.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExclamationCircle, faComments } from '@fortawesome/free-solid-svg-icons';
 
+
 function ProfessionalHeader() {
   const { dispatch } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -71,6 +72,7 @@ function ProfessionalHeader() {
               <span className="nav-text">MY PROJECT</span>
             </Link>
           </li>
+          
           <li className={`nav-item ${isActive('/professional-conversations')}`}>
             <Link to="/professional-conversations" className="nav-link">
               <span className="nav-icon">

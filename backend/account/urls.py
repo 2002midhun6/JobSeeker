@@ -2,8 +2,13 @@ from django.urls import path
 from .views import RegisterView, LoginView, LogoutView, VerifyOTPView, ForgotPasswordView, ResetPasswordView, AcceptJobApplicationView, JobDetailView, RequestVerificationView, AdminVerifyProfessionalView, ProfessionalJobApplicationsView, SubmitReviewView, AdminJobsView, ComplaintListCreateView, AdminComplaintListView, ConversationView, UnreadMessagesCountView, CreateMissingConversationsView, FileUploadView,FileRecoveryView
 from .views import CheckAuthView, BlockUnblockUserView, ListUsersView, ProfessionalProfileView, JobCreateView, OpenJobsListView, ApplyToJobView, ClientProjectsView, JobApplicationsListView, AdminVerificationRequestsView, VerifyPaymentView, ClientPendingPaymentsView, ClientTransactionHistoryView, ComplaintDetailView, ProfessionalTransactionHistoryView, UserConversationsView, CheckJobStatesView, WebSocketAuthTokenView
 from .views import UserCountsView, JobCountsView,PaymentTotalView,ResendOTPView
-
-
+from account.views import (
+    NotificationListView,
+    NotificationCountView,
+    MarkNotificationReadView,
+    MarkAllNotificationsReadView,
+    
+)
     
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -48,4 +53,8 @@ urlpatterns = [
     path('jobs/counts/', JobCountsView.as_view(), name='job-counts'),
     path('payments/total/', PaymentTotalView.as_view(), name='payment-total'),
       path('resend-otp/', ResendOTPView.as_view(), name='resend-otp'),
+        path('notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('notifications/count/', NotificationCountView.as_view(), name='notification-count'),
+    path('notifications/mark-read/', MarkNotificationReadView.as_view(), name='mark-notification-read'),
+    path('notifications/mark-all-read/', MarkAllNotificationsReadView.as_view(), name='mark-all-notifications-read'),
 ]
