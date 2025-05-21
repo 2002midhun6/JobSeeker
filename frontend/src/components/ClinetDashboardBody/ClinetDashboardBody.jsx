@@ -58,8 +58,8 @@ function ClientDashBoardContent() {
 
   return (
     <div className="client-dashboard">
-      <h1>Client Dashboard</h1>
-      <p>Welcome to the Client Dashboard!</p>
+      <h1 style={{color:'whitesmoke'}}>Client Dashboard</h1>
+      <p style={{color:'whitesmoke'}}>Welcome to the Client Dashboard!</p>
       
       {loading ? (
         <p>Loading project data...</p>

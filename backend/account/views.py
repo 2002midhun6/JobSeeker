@@ -53,7 +53,40 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import Notification
 from .serializers import NotificationSerializer
+# accounts/views.py
+from rest_framework_simplejwt.tokens import RefreshToken
 
+class TokenRefreshView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    
+    def post(self, request):
+        try:
+            # Get the refresh token from the cookie
+            refresh_token = request.COOKIES.get('refresh_token')
+            
+            if not refresh_token:
+                return Response({'error': 'Refresh token not found'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Validate the refresh token and get a new access token
+            refresh = RefreshToken(refresh_token)
+            access_token = refresh.access_token
+            
+            # Create response and set the new access token as a cookie
+            response = Response({'message': 'Token refreshed successfully'}, status=status.HTTP_200_OK)
+            response.set_cookie(
+                key='access_token',
+                value=str(access_token),
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='Lax'
+            )
+            
+            return response
+            
+        except Exception as e:
+            # If the refresh token is invalid or expired
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 class NotificationListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
@@ -721,29 +754,34 @@ class LoginView(APIView):
             return Response({'error': 'Please verify your email before logging in.'}, status=status.HTTP_401_UNAUTHORIZED)
         
       
+        # In your LoginView.post method
         refresh = RefreshToken.for_user(user)
         response = Response({
             'user': {
-                'id':user.id,
+                'id': user.id,
                 'email': user.email,
                 'name': user.name,
                 'role': user.role,
                 'is_staff': user.is_staff
             }
         }, status=status.HTTP_200_OK)
+
+        # Set the cookies with appropriate expiration
         response.set_cookie(
             key='access_token',
             value=str(refresh.access_token),
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Lax'
+            samesite='Lax',
+            max_age=60 * 30  # 30 minutes
         )
         response.set_cookie(
             key='refresh_token',
             value=str(refresh),
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Lax'
+            samesite='Lax',
+            max_age=60 * 60 * 24 * 7  # 7 days
         )
         return response
 

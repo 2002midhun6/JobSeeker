@@ -100,11 +100,11 @@ function ClientTransactions() {
         <>
           <table className="transactions-table">
             <thead>
-              <tr>
-                <th>Job Title</th>
-                <th>Professional</th>
-                <th>Amount (INR)</th>
-                <th>Type</th>
+              <tr style={{color:'black'}}>
+                <th style={{color:'black'}}>Job Title</th>
+                <th style={{color:'black'}}>Professional</th>
+                <th style={{color:'black'}}>Amount (INR)</th>
+                <th style={{color:'black'}}>Type</th>
               </tr>
             </thead>
             <tbody>

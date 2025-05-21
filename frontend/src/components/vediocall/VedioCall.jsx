@@ -749,46 +749,19 @@ const handleNewICECandidate = async (data) => {
           <div className="videos-grid">
             <div className="remote-video-container">
             <div className="debug-controls">
-  <button onClick={() => {
-    console.log('Testing signaling...');
-    socket.send(JSON.stringify({
-      type: 'testing_signal',
-      message: `Test from ${userInfo.name} (ID: ${userInfo.id})`,
-      timestamp: new Date().toISOString()
-    }));
-  }}>
-    Test Signaling
-  </button>
-  <div className="call-status-indicator">
-  <p>Connection: {socketConnected ? '✅ Connected' : '❌ Disconnected'}</p>
-  <p>Status: {callStatus}</p>
-  <p>Remote User: {remoteUserReady ? '✅ Ready' : '⏳ Waiting'}</p>
-  <p>Peer Connection: {peerConnectionRef.current ? '✅ Created' : '❌ None'}</p>
-</div>
+  
+ 
 
 <div className="connection-status">
   <div className={`status-indicator ${peerConnectionRef.current?.iceConnectionState || 'disconnected'}`}></div>
   <span>{peerConnectionRef.current?.iceConnectionState || 'Not connected'}</span>
 </div>
-<div className="media-status">
-  <p>Local Tracks: {localStream ? `${localStream.getTracks().length} (${localStream.getTracks().map(t => t.kind).join(', ')})` : 'None'}</p>
-  <p>Remote Tracks: {remoteStream ? `${remoteStream.getTracks().length} (${remoteStream.getTracks().map(t => t.kind).join(', ')})` : 'None'}</p>
+
+ 
 </div>
-  <div className="webrtc-debug">
-  <div>Call Status: {callStatus}</div>
-  <div>Remote User Ready: {remoteUserReady ? 'Yes' : 'No'}</div>
-  <div>Peer Connection: {peerConnectionRef.current ? 'Created' : 'Not Created'}</div>
-  <div>Local Stream: {localStream ? `${localStream.getTracks().length} tracks` : 'No stream'}</div>
-  <div>Remote Stream: {remoteStream ? `${remoteStream.getTracks().length} tracks` : 'No stream'}</div>
-  <div>Buffered ICE Candidates: {iceCandidatesBuffer.current.length}</div>
-</div>
-</div>
-            <button onClick={testConnection}>Test Connection</button>
+         
             <div className="signaling-status">
-  <p>
-    Connection status: {socketConnected ? "Connected ✅" : "Disconnected ❌"} 
-    {callStatus !== 'idle' && ` • Call status: ${callStatus}`}
-  </p>
+  
 </div>
             <div className="signaling-status">
   {socketConnected ? (

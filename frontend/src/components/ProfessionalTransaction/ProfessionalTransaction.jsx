@@ -179,10 +179,10 @@ function ProfessionalTransactions() {
           <table className="transactions-table">
             <thead>
               <tr>
-                <th>Job Title</th>
-                <th>Client</th>
-                <th>Amount (INR)</th>
-                <th>Type</th>
+                <th style={{color:'black'}}>Job Title</th>
+                <th style={{color:'black'}}>Client</th>
+                <th style={{color:'black'}}>Amount (INR)</th>
+                <th style={{color:'black'}}>Type</th>
               </tr>
             </thead>
             <tbody>
