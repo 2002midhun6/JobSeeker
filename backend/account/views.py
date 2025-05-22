@@ -55,7 +55,15 @@ from .models import Notification
 from .serializers import NotificationSerializer
 # accounts/views.py
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.http import JsonResponse
+from rest_framework.decorators import api_view, permission_classes
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 
+@csrf_exempt
+@require_http_methods(["GET"])
+def health_check(request):
+    return JsonResponse({'status': 'healthy', 'service': 'backend'})
 class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -712,31 +720,31 @@ class RegisterView(APIView):
         send_otp_email(user)  # Send OTP email
         return Response({'message': 'OTP sent to email. Verify your email to activate your account.'}, status=status.HTTP_201_CREATED)
         
-        refresh = RefreshToken.for_user(user)
+        # refresh = RefreshToken.for_user(user)
 
-        # Set tokens in HTTP-only cookies
-        response = Response({
-            'user': {
-                'email': user.email,
-                'name': user.name,
-                'role': user.role
-            }
-        }, status=status.HTTP_201_CREATED)
-        response.set_cookie(
-            key='access_token',
-            value=str(refresh.access_token),
-            httponly=True,
-            secure=not settings.DEBUG,  # Secure in production
-            samesite='Lax'
-        )
-        response.set_cookie(
-            key='refresh_token',
-            value=str(refresh),
-            httponly=True,
-            secure=not settings.DEBUG,
-            samesite='Lax'
-        )
-        return response
+        # # Set tokens in HTTP-only cookies
+        # response = Response({
+        #     'user': {
+        #         'email': user.email,
+        #         'name': user.name,
+        #         'role': user.role
+        #     }
+        # }, status=status.HTTP_201_CREATED)
+        # response.set_cookie(
+        #     key='access_token',
+        #     value=str(refresh.access_token),
+        #     httponly=True,
+        #     secure=not settings.DEBUG,  # Secure in production
+        #     samesite='Lax'
+        # )
+        # response.set_cookie(
+        #     key='refresh_token',
+        #     value=str(refresh),
+        #     httponly=True,
+        #     secure=not settings.DEBUG,
+        #     samesite='Lax'
+        # )
+        # return response
 
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Optional, depending on your requirements

@@ -28,7 +28,7 @@ SECRET_KEY = "django-insecure-+pha7q_e=@%qel)xyhk#n1(av+h8i1k=4w4ee4t#-6@6q*ig&i
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     'rest_framework',
     'rest_framework_simplejwt',
-     'rest_framework_simplejwt.token_blacklist',
+    'rest_framework_simplejwt.token_blacklist',
     'rest_framework.authtoken',
     'corsheaders',
     'account',
@@ -107,15 +107,73 @@ TEMPLATES = [
 ASGI_APPLICATION = 'backend.asgi.application'
 
 WSGI_APPLICATION = "backend.wsgi.application"
+# Replace your existing CHANNEL_LAYERS configuration in settings.py with this:
 
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
+            "hosts": [f"redis://:{os.getenv('REDIS_PASSWORD')}@{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT')}"],
+            "symmetric_encryption_keys": [os.getenv('SECRET_KEY')],
+            
+            # Basic settings that work with all versions
+            "capacity": 300,
+            "expiry": 60,
+            "group_expiry": 300,
         },
     },
 }
+# Add these settings to your settings.py file
+
+# WebSocket settings
+WEBSOCKET_TIMEOUT = 300  # 5 minutes
+APPLICATION_CLOSE_TIMEOUT = 30  # 30 seconds
+
+# Logging configuration for better debugging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'websocket.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'channels': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'channels_redis': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
+
 # CHANNEL_LAYERS = {
 #     'default': {
 #         'BACKEND': 'channels.layers.InMemoryChannelLayer',
@@ -127,15 +185,20 @@ CHANNEL_LAYERS = {
 DATABASES = {
     "default": {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'jobseeker',
-        'USER': 'postgres',  # or 'postgres' if using default user
-        'PASSWORD': '4040',  # your password
-        'HOST': 'localhost',
-        'PORT': '5432',  # default PostgreSQL port
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'), 
+        'PASSWORD': os.getenv('DB_PASSWORD'), 
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'), 
     
     }
 }
-
+# Database connection pool settings
+DATABASES['default']['CONN_MAX_AGE'] = 600
+DATABASES['default']['OPTIONS'] = {
+    'connect_timeout': 10,
+    'options': '-c default_transaction_isolation=serializable'
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
