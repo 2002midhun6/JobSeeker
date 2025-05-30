@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { AuthContext } from '../../context/AuthContext';
 import './ProfessionalJobDetails.css';
-
+const baseUrl = import.meta.env.VITE_API_URL;
 function ProfessionalJobApplications() {
   const authContext = useContext(AuthContext);
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ function ProfessionalJobApplications() {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/professional-job-applications/', {
+        const response = await axios.get(`${baseUrl}/api/professional-job-applications/`, {
           withCredentials: true,
         });
         console.log('Fetch Professional Applications Response:', response.data);
@@ -95,7 +95,7 @@ function ProfessionalJobApplications() {
 
     try {
       const response = await axios.post(
-        'http://localhost:8000/api/professional-job-applications/',
+        `${baseUrl}/api/professional-job-applications/`,
         { application_id: applicationId, action },
         { withCredentials: true }
       );
@@ -156,6 +156,50 @@ function ProfessionalJobApplications() {
     }
   };
 
+  // Format currency
+  const formatCurrency = (amount) => {
+    if (!amount) return 'Not specified';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Not specified';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Format datetime
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'Not specified';
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Get status badge class
+  const getStatusBadgeClass = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'accepted': return 'status-accepted';
+      case 'completed': return 'status-completed';
+      case 'pending payment': return 'status-pending';
+      case 'cancelled': return 'status-cancelled';
+      case 'rejected': return 'status-rejected';
+      default: return 'status-pending';
+    }
+  };
+
   const ongoingProjects = filteredApplications.filter(
     (app) => app.status === 'Accepted' || app.status === 'Pending Payment'
   );
@@ -191,6 +235,8 @@ function ProfessionalJobApplications() {
       pages.push(i);
     }
 
+    if (pageCount <= 1) return null;
+
     return (
       <div className="pagination">
         <button
@@ -220,11 +266,75 @@ function ProfessionalJobApplications() {
     );
   };
 
+  // Enhanced Project Item Component
+  const ProjectItem = ({ app, showActions = false }) => (
+    <li className="project-item">
+      <h4>{app.job_details?.title || 'Untitled Job'}</h4>
+      
+      <div className="project-details">
+        <div className="project-detail-item status">
+          Job Status: {app.job_details?.status || 'N/A'}
+        </div>
+        <div className="project-detail-item status">
+          Application Status: 
+          <span className={`status-badge ${getStatusBadgeClass(app.status)}`}>
+            {app.status}
+          </span>
+        </div>
+        <div className="project-detail-item applied">
+          Applied: {formatDateTime(app.applied_at)}
+        </div>
+        <div className="project-detail-item budget">
+          Budget: {formatCurrency(app.job_details?.budget)}
+        </div>
+        <div className="project-detail-item deadline">
+          Deadline: {formatDate(app.job_details?.deadline)}
+        </div>
+      </div>
+
+      <p style={{ marginTop: '16px', padding: '16px', background: 'linear-gradient(135deg, #f1f5f9, #e2e8f0)', borderRadius: '12px', borderLeft: '4px solid #3b82f6' }}>
+        {app.job_details?.description || 'No description provided'}
+      </p>
+
+      <h5>Client Details:</h5>
+      <p style={{ marginLeft: '16px', color: '#374151', fontWeight: '500' }}>
+        {app.job_details?.client_id?.name || 'N/A'}
+      </p>
+
+      {showActions && (
+        <div className="action-buttons">
+          {app.status === 'Accepted' && (
+            <>
+              <button
+                onClick={() => handleAction(app.application_id, 'complete')}
+                className="complete-btn"
+              >
+                Mark as Completed
+              </button>
+              <button
+                onClick={() => handleAction(app.application_id, 'cancel')}
+                className="cancel-btn"
+              >
+                Cancel Project
+              </button>
+            </>
+          )}
+          {app.status === 'Pending Payment' && (
+            <div className="pending-payment">
+              Waiting for client to complete remaining payment...
+            </div>
+          )}
+        </div>
+      )}
+    </li>
+  );
+
   if (!isAuthenticated || !user) return null;
 
   return (
     <div className="professional-jobs-container">
       <h2>My Job Applications</h2>
+      
       <div className="search-bar">
         <input
           type="text"
@@ -234,81 +344,56 @@ function ProfessionalJobApplications() {
           className="search-input"
         />
       </div>
+      
       <div className="tab-buttons">
         <button
           className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
           onClick={() => handleTabChange('all')}
         >
-          All
+          All ({filteredApplications.length})
         </button>
         <button
           className={`tab-btn ${activeTab === 'ongoing' ? 'active' : ''}`}
           onClick={() => handleTabChange('ongoing')}
         >
-          Ongoing
+          Ongoing ({ongoingProjects.length})
         </button>
         <button
           className={`tab-btn ${activeTab === 'completed' ? 'active' : ''}`}
           onClick={() => handleTabChange('completed')}
         >
-          Completed
+          Completed ({completedProjects.length})
         </button>
         <button
           className={`tab-btn ${activeTab === 'other' ? 'active' : ''}`}
           onClick={() => handleTabChange('other')}
         >
-          Other
+          Other ({otherProjects.length})
         </button>
       </div>
+      
       {error && <div className="error-message">{error}</div>}
+      
       {loading ? (
-        <p className="loading-message">Loading applications...</p>
+        <div className="loading-message">Loading applications...</div>
       ) : filteredApplications.length === 0 ? (
-        <p className="empty-message">No job applications found.</p>
+        <div className="empty-message">No job applications found.</div>
       ) : (
         <div className="tabs-content">
           {(activeTab === 'all' || activeTab === 'ongoing') && (
             <section className="tab-section">
-              <h3>Ongoing Projects</h3>
+              <h3 data-section="ongoing">Ongoing Projects</h3>
               {ongoingProjects.length === 0 ? (
-                <p className="empty-message">No ongoing projects found.</p>
+                <div className="empty-message">No ongoing projects found.</div>
               ) : (
                 <>
                   <ul className="project-list">
                     {paginate(ongoingProjects, currentPage.ongoing).map((app) => (
-                      <li key={app.application_id} className="project-item">
-                        <h4>{app.job_details?.title || 'Untitled Job'}</h4>
-                        <p>Job Status: {app.job_details?.status || 'N/A'}</p>
-                        <p>Application Status: {app.status}</p>
-                        <p>Applied At: {new Date(app.applied_at).toLocaleString()}</p>
-                        <p>Description: {app.job_details?.description || 'N/A'}</p>
-                        <p>Budget: ${app.job_details?.budget || 'N/A'}</p>
-                        <p>Deadline: {app.job_details?.deadline || 'N/A'}</p>
-                        <h5>Client Details:</h5>
-                        <p>Name: {app.job_details?.client_id?.name || 'N/A'}</p>
-                        <div className="action-buttons">
-                          {app.status === 'Accepted' && (
-                            <>
-                              <button
-                                onClick={() => handleAction(app.application_id, 'complete')}
-                                className="complete-btn"
-                              >
-                                Mark as Completed
-
-                              </button>
-                              <button
-                                onClick={() => handleAction(app.application_id, 'cancel')}
-                                className="cancel-btn"
-                              >
-                                Cancel Project
-                              </button>
-                            </>
-                          )}
-                          {app.status === 'Pending Payment' && (
-                            <p className="pending-payment">Waiting for client to complete remaining payment...</p>
-                          )}
-                        </div>
-                      </li>
+                      <ProjectItem 
+                        key={app.application_id} 
+                        app={app} 
+                        showActions={true}
+                      />
                     ))}
                   </ul>
                   <PaginationControls tab="ongoing" totalItems={ongoingProjects} />
@@ -319,24 +404,18 @@ function ProfessionalJobApplications() {
 
           {(activeTab === 'all' || activeTab === 'completed') && (
             <section className="tab-section">
-              <h3>Completed Projects</h3>
+              <h3 data-section="completed">Completed Projects</h3>
               {completedProjects.length === 0 ? (
-                <p className="empty-message">No completed projects found.</p>
+                <div className="empty-message">No completed projects found.</div>
               ) : (
                 <>
                   <ul className="project-list">
                     {paginate(completedProjects, currentPage.completed).map((app) => (
-                      <li key={app.application_id} className="project-item">
-                        <h4>{app.job_details?.title || 'Untitled Job'}</h4>
-                        <p>Job Status: {app.job_details?.status || 'N/A'}</p>
-                        <p>Application Status: {app.status}</p>
-                        <p>Applied At: {new Date(app.applied_at).toLocaleString()}</p>
-                        <p>Description: {app.job_details?.description || 'N/A'}</p>
-                        <p>Budget: ${app.job_details?.budget || 'N/A'}</p>
-                        <p>Deadline: {app.job_details?.deadline || 'N/A'}</p>
-                        <h5>Client Details:</h5>
-                        <p>Name: {app.job_details?.client_id?.name || 'N/A'}</p>
-                      </li>
+                      <ProjectItem 
+                        key={app.application_id} 
+                        app={app} 
+                        showActions={false}
+                      />
                     ))}
                   </ul>
                   <PaginationControls tab="completed" totalItems={completedProjects} />
@@ -347,24 +426,18 @@ function ProfessionalJobApplications() {
 
           {(activeTab === 'all' || activeTab === 'other') && (
             <section className="tab-section">
-              <h3>Other Applications</h3>
+              <h3 data-section="other">Other Applications</h3>
               {otherProjects.length === 0 ? (
-                <p className="empty-message">No other applications found.</p>
+                <div className="empty-message">No other applications found.</div>
               ) : (
                 <>
                   <ul className="project-list">
                     {paginate(otherProjects, currentPage.other).map((app) => (
-                      <li key={app.application_id} className="project-item">
-                        <h4>{app.job_details?.title || 'Untitled Job'}</h4>
-                        <p>Job Status: {app.job_details?.status || 'N/A'}</p>
-                        <p>Application Status: {app.status}</p>
-                        <p>Applied At: {new Date(app.applied_at).toLocaleString()}</p>
-                        <p>Description: {app.job_details?.description || 'N/A'}</p>
-                        <p>Budget: ${app.job_details?.budget || 'N/A'}</p>
-                        <p>Deadline: {app.job_details?.deadline || 'N/A'}</p>
-                        <h5>Client Details:</h5>
-                        <p>Name: {app.job_details?.client_id?.name || 'N/A'}</p>
-                      </li>
+                      <ProjectItem 
+                        key={app.application_id} 
+                        app={app} 
+                        showActions={false}
+                      />
                     ))}
                   </ul>
                   <PaginationControls tab="other" totalItems={otherProjects} />

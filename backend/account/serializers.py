@@ -12,7 +12,7 @@ from datetime import date
 from .models import Complaint,Conversation,Message
 from rest_framework import serializers
 from .models import Message
-
+from .cloudinary_utils import CloudinaryManager
 from .models import Notification
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -59,21 +59,25 @@ class ComplaintSerializer(serializers.ModelSerializer):
     user_email = serializers.SerializerMethodField()
     user_role = serializers.SerializerMethodField()
     status_display = serializers.SerializerMethodField()
+    responded_by_name = serializers.SerializerMethodField()
+    can_mark_resolved = serializers.SerializerMethodField()
+    can_request_further_action = serializers.SerializerMethodField()  # New field
     
     class Meta:
         model = Complaint
         fields = [
-            'id', 
-            'user', 
-            'user_email',
-            'user_role',
-            'description', 
-            'status', 
-            'status_display',
-            'created_at', 
-            'updated_at'
+            'id', 'user', 'user_email', 'user_role', 'description',
+            'admin_response', 'responded_by', 'responded_by_name', 'response_date',
+            'client_feedback', 'feedback_date', 'resolution_rating',
+            'status', 'status_display', 'can_mark_resolved', 'can_request_further_action',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'user', 'user_email', 'user_role', 'created_at', 'updated_at', 'status_display']
+        read_only_fields = [
+            'id', 'user', 'user_email', 'user_role', 'created_at', 
+            'updated_at', 'status_display', 'responded_by', 'response_date',
+            'responded_by_name', 'can_mark_resolved', 'can_request_further_action',
+            'feedback_date'
+        ]
     
     def get_user_email(self, obj):
         return obj.user.email if obj.user else None
@@ -84,11 +88,45 @@ class ComplaintSerializer(serializers.ModelSerializer):
     def get_status_display(self, obj):
         return obj.get_status_display()
     
+    def get_responded_by_name(self, obj):
+        return obj.responded_by.name if obj.responded_by else None
+    
+    def get_can_mark_resolved(self, obj):
+        return obj.status == 'AWAITING_USER_RESPONSE' and bool(obj.admin_response)
+    
+    def get_can_request_further_action(self, obj):
+        return obj.status == 'AWAITING_USER_RESPONSE' and bool(obj.admin_response)
+    
     def create(self, validated_data):
-        # Associate complaint with the current user
         user = self.context['request'].user
         validated_data['user'] = user
         return super().create(validated_data)
+
+# New serializer for client feedback
+class ClientFeedbackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Complaint
+        fields = ['client_feedback', 'resolution_rating']
+        
+    def validate_client_feedback(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Feedback cannot be empty")
+        return value
+    
+    def validate_resolution_rating(self, value):
+        if value is not None and (value < 1 or value > 5):
+            raise serializers.ValidationError("Rating must be between 1 and 5")
+        return value
+class AdminResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Complaint
+        fields = ['admin_response']
+        
+    def validate_admin_response(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Response cannot be empty")
+        return value
+
 class PaymentSerializer(serializers.ModelSerializer):
     job_application = serializers.SerializerMethodField()
 
@@ -237,107 +275,150 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ['id', 'email', 'name', 'role', 'is_blocked', 'is_verified']
 class ProfessionalProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    verify_doc = serializers.FileField(required=False)
+    verify_doc_url = serializers.SerializerMethodField()
+    verify_doc_download_url = serializers.SerializerMethodField()
+    verify_doc_filename = serializers.SerializerMethodField()
+    user_name = serializers.CharField(source='user.name', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
     
     class Meta:
         model = ProfessionalProfile
         fields = [
-            'bio',
-            'skills',
-            'experience_years',
-            'availability_status',
-            'portfolio_links',
-            'verify_status',
-            'avg_rating',
-            'user',
-            'verify_doc',
-            'denial_reason',
+            'user', 'user_name', 'user_email', 'bio', 'skills', 'experience_years',
+            'availability_status', 'portfolio_links', 'verify_doc', 'verify_status',
+            'avg_rating', 'denial_reason', 'verify_doc_url', 'verify_doc_download_url',
+            'verify_doc_filename'
         ]
-# accounts/serializers.py
-class JobSerializer(serializers.ModelSerializer):
-    client_id = serializers.SerializerMethodField()
-    client_name = serializers.CharField(source='client_id.name', read_only=True)  # Added
-    applicants_count = serializers.SerializerMethodField()
+        read_only_fields = ['user', 'user_name', 'user_email', 'avg_rating']
 
+    def get_verify_doc_url(self, obj):
+        """Get view URL for verification document"""
+        if not obj.verify_doc:
+            return None
+        return CloudinaryManager.get_file_url(obj.verify_doc)
+
+    def get_verify_doc_download_url(self, obj):
+        """Get download URL for verification document"""
+        if not obj.verify_doc:
+            return None
+        return CloudinaryManager.get_download_url(obj.verify_doc)
+
+    def get_verify_doc_filename(self, obj):
+        """Get filename for verification document"""
+        if not obj.verify_doc:
+            return None
+        return CloudinaryManager.extract_filename_from_public_id(obj.verify_doc)
+
+
+# serializers.py - Update these serializer methods
+
+# serializers.py - Complete JobSerializer with all required methods
+
+# serializers.py - Quick fix without CloudinaryManager dependencies
+
+# accounts/serializers.py - Update your JobSerializer
+
+class JobSerializer(serializers.ModelSerializer):
+    attachment_url = serializers.SerializerMethodField()
+    attachment_download_url = serializers.SerializerMethodField()
+    attachment_filename = serializers.SerializerMethodField()
+    client_name = serializers.CharField(source='client_id.name', read_only=True)
+    professional_name = serializers.CharField(source='professional_id.name', read_only=True)
+    applicants_count = serializers.IntegerField(read_only=True)  # Add this field
+    
     class Meta:
         model = Job
         fields = [
-            'job_id',
-            'title',
-            'description',
-            'budget',
-            'deadline',
-            'status',
-            'created_at',
-            'advance_payment',
-            'client_id',
-            'client_name',  
-            'applicants_count',
-            'rating',
-            'review'
+            'job_id', 'title', 'description', 'budget', 'deadline', 'status',
+            'created_at', 'advance_payment', 'client_name', 'professional_name',
+            'attachment', 'attachment_url', 'attachment_download_url', 'attachment_filename',
+            'rating', 'review', 'applicants_count'  # Include applicants_count
         ]
-        read_only_fields = ['job_id', 'status', 'created_at', 'client_id', 'client_name', 'applicants_count', 'rating']
+        read_only_fields = ['job_id', 'created_at', 'client_name', 'professional_name', 'applicants_count']
 
-    def get_client_id(self, obj):
-        return UserSerializer(obj.client_id).data
+    def get_attachment_url(self, obj):
+        """Get view URL for attachment"""
+        if not obj.attachment:
+            return None
+        return CloudinaryManager.get_file_url(obj.attachment)
 
-    def get_applicants_count(self, obj):
-        return obj.applications.count()
+    def get_attachment_download_url(self, obj):
+        """Get download URL for attachment"""
+        if not obj.attachment:
+            return None
+        return CloudinaryManager.get_download_url(obj.attachment)
 
-    def validate_budget(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Budget must be greater than zero")
-        return value
-
-    def validate_advance_payment(self, value):
-        if value is not None and value < 0:
-            raise serializers.ValidationError("Advance payment cannot be negative")
-        return value
-
-    def validate_deadline(self, value):
-        if value < date.today():
-            raise serializers.ValidationError("Deadline cannot be in the past")
-        return value
-
-    def validate(self, data):
-        if 'advance_payment' in data and 'budget' in data and data['advance_payment'] is not None:
-            if data['advance_payment'] > data['budget']:
-                raise serializers.ValidationError("Advance payment cannot exceed budget")
-        return data
+    def get_attachment_filename(self, obj):
+        """Get filename for attachment"""
+        if not obj.attachment:
+            return None
+        # If you store original filename separately, use it; otherwise extract from public_id
+        return CloudinaryManager.extract_filename_from_public_id(obj.attachment)
 class JobApplicationSerializer(serializers.ModelSerializer):
-    professional_id = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.filter(role='professional'),
-        required=False
-    )
-    job_id = serializers.PrimaryKeyRelatedField(
-        queryset=Job.objects.all()
-    )
-    job_details = serializers.SerializerMethodField()
-    professional_details = serializers.SerializerMethodField()
-
+    job_title = serializers.CharField(source='job_id.title', read_only=True)
+    job_budget = serializers.DecimalField(source='job_id.budget', max_digits=10, decimal_places=2, read_only=True)
+    job_deadline = serializers.DateField(source='job_id.deadline', read_only=True)
+    job_description = serializers.CharField(source='job_id.description', read_only=True)
+    client_name = serializers.CharField(source='job_id.client_id.name', read_only=True)
+    client_email = serializers.CharField(source='job_id.client_id.email', read_only=True)
+    professional_name = serializers.CharField(source='professional_id.name', read_only=True)
+    professional_email = serializers.CharField(source='professional_id.email', read_only=True)
+    
+    # Add attachment fields
+    job_attachment_url = serializers.SerializerMethodField()
+    job_attachment_download_url = serializers.SerializerMethodField()
+    job_attachment_filename = serializers.SerializerMethodField()
+    
+    # Professional profile fields
+    professional_profile = serializers.SerializerMethodField()
+    
     class Meta:
         model = JobApplication
-        fields = ['application_id', 'job_id', 'professional_id', 'status', 'applied_at', 'professional_details', 'job_details']
-        read_only_fields = ['application_id', 'applied_at', 'professional_details', 'job_details']
+        fields = [
+            'application_id', 'job_id', 'professional_id', 'status', 'applied_at',
+            'job_title', 'job_budget', 'job_deadline', 'job_description',
+            'client_name', 'client_email', 'professional_name', 'professional_email',
+            'job_attachment_url', 'job_attachment_download_url', 'job_attachment_filename',
+            'professional_profile'
+        ]
+        read_only_fields = ['application_id', 'applied_at']
 
-    def get_professional_details(self, obj):
+    def get_job_attachment_url(self, obj):
+        """Get view URL for job attachment"""
+        if not obj.job_id.attachment:
+            return None
+        return CloudinaryManager.get_file_url(obj.job_id.attachment)
+
+    def get_job_attachment_download_url(self, obj):
+        """Get download URL for job attachment"""
+        if not obj.job_id.attachment:
+            return None
+        return CloudinaryManager.get_download_url(obj.job_id.attachment)
+
+    def get_job_attachment_filename(self, obj):
+        """Get filename for job attachment"""
+        if not obj.job_id.attachment:
+            return None
+        return CloudinaryManager.extract_filename_from_public_id(obj.job_id.attachment)
+
+    def get_professional_profile(self, obj):
+        """Get professional profile data"""
         try:
             profile = ProfessionalProfile.objects.get(user=obj.professional_id)
-            profile_data = ProfessionalProfileSerializer(profile).data
-            user_data = UserSerializer(obj.professional_id).data
-            return {**profile_data, 'user': user_data}
+            return {
+                'experience_years': profile.experience_years,
+                'avg_rating': profile.avg_rating,
+                'verify_status': profile.verify_status,
+                'availability_status': profile.availability_status,
+                'skills': profile.skills,
+                'bio': profile.bio
+            }
         except ProfessionalProfile.DoesNotExist:
-            return {'user': UserSerializer(obj.professional_id).data}
-
-    def get_job_details(self, obj):
-        return JobSerializer(obj.job_id).data
-
-    def validate(self, data):
-        job = data['job_id']
-        if job.status != 'Open':
-            raise serializers.ValidationError("This job is not open for applications.")
-        request_user = self.context['request'].user
-        if JobApplication.objects.filter(job_id=job, professional_id=request_user).exists():
-            raise serializers.ValidationError("You have already applied to this job.")
-        return data
+            return {
+                'experience_years': 0,
+                'avg_rating': 0,
+                'verify_status': 'Not Verified',
+                'availability_status': 'Unknown',
+                'skills': [],
+                'bio': ''
+            }

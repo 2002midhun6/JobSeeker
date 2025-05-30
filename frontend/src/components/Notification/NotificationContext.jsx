@@ -3,7 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
-
+const baseUrl = import.meta.env.VITE_API_URL;
 export const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
@@ -19,14 +19,14 @@ export const NotificationProvider = ({ children }) => {
       // Get WebSocket token first
       const getWebSocketToken = async () => {
         try {
-          const response = await axios.get('http://localhost:8000/api/websocket-token/', {
+          const response = await axios.get(`${baseUrl}/api/websocket-token/`, {
             withCredentials: true
           });
           
           const wsToken = response.data.access_token;
           
           // Create WebSocket connection with authentication token
-          const ws = new WebSocket(`ws://localhost:8000/ws/notifications/?token=${wsToken}`);
+          const ws = new WebSocket(`wss://api.midhung.in/ws/notifications/?token=${wsToken}`);
           
           ws.onopen = () => {
             console.log('Notification WebSocket connected');
@@ -90,7 +90,7 @@ export const NotificationProvider = ({ children }) => {
   // Fetch notifications from API
   const fetchNotifications = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/notifications/', {
+      const response = await axios.get(`${baseUrl}/api/notifications/`, {
         withCredentials: true
       });
       
@@ -227,7 +227,7 @@ export const NotificationProvider = ({ children }) => {
   // Mark notifications as read
   const markAsRead = async (notificationId) => {
     try {
-      await axios.post('http://localhost:8000/api/notifications/mark-read/', {
+      await axios.post(`${baseUrl}/api/notifications/mark-read/`, {
         notification_id: notificationId
       }, {
         withCredentials: true
@@ -250,7 +250,7 @@ export const NotificationProvider = ({ children }) => {
   // Mark all notifications as read
   const markAllAsRead = async () => {
     try {
-      await axios.post('http://localhost:8000/api/notifications/mark-all-read/', {}, {
+      await axios.post(`${baseUrl}/api/notifications/mark-all-read/`, {}, {
         withCredentials: true
       });
       

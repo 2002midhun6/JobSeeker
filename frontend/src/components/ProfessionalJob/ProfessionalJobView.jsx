@@ -5,6 +5,106 @@ import Swal from 'sweetalert2';
 import { AuthContext } from '../../context/AuthContext';
 import './ProfessionalJobView.css';
 
+const baseUrl = import.meta.env.VITE_API_URL;
+
+// Updated File Display Component for Cloudinary
+const FileAttachment = ({ attachmentData }) => {
+  if (!attachmentData) return null;
+
+  const getFileIcon = (fileName) => {
+    const extension = fileName.toLowerCase().split('.').pop();
+    switch (extension) {
+      case 'pdf': return '📄';
+      case 'doc':
+      case 'docx': return '📝';
+      case 'xls':
+      case 'xlsx': return '📊';
+      case 'ppt':
+      case 'pptx': return '📋';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif': return '🖼️';
+      case 'zip':
+      case 'rar': return '📦';
+      default: return '📎';
+    }
+  };
+
+  // Handle both new structured format and legacy URL format
+  const getAttachmentInfo = (attachment) => {
+    if (!attachment) {
+      return { filename: '', url: '', downloadUrl: '' };
+    }
+
+    // If attachment has structured data (new format)
+    if (typeof attachment === 'object' && attachment.attachment_url) {
+      return {
+        filename: attachment.attachment_filename || 'attachment',
+        url: attachment.attachment_url,
+        downloadUrl: attachment.attachment_download_url || attachment.attachment_url
+      };
+    }
+
+    // Legacy format: attachment is a URL string
+    if (typeof attachment === 'string') {
+      const filename = attachment.includes('/') 
+        ? decodeURIComponent(attachment.split('/').pop()) 
+        : attachment;
+      
+      const fullUrl = attachment.startsWith('http') 
+        ? attachment 
+        : `${baseUrl}${attachment.startsWith('/') ? '' : '/'}${attachment}`;
+
+      return {
+        filename,
+        url: fullUrl,
+        downloadUrl: fullUrl
+      };
+    }
+
+    return { filename: 'Unknown file', url: '', downloadUrl: '' };
+  };
+
+  const attachmentInfo = getAttachmentInfo(attachmentData);
+
+  if (!attachmentInfo.url) return null;
+
+  return (
+    <div className="file-attachment">
+      <div className="file-attachment-header">
+        <span className="attachment-icon">📎</span>
+        <span className="attachment-label">Project Documents</span>
+      </div>
+      <div className="file-preview-compact">
+        <span className="file-icon">{getFileIcon(attachmentInfo.filename)}</span>
+        <div className="file-info">
+          <div className="file-name" title={attachmentInfo.filename}>
+            {attachmentInfo.filename}
+          </div>
+          {process.env.NODE_ENV === 'development' && (
+            <div className="file-url-debug" style={{ fontSize: '10px', color: '#666', marginTop: '2px' }}>
+              URL: {attachmentInfo.url}
+            </div>
+          )}
+          <a 
+            href={attachmentInfo.downloadUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="file-download-link"
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Downloading attachment:', attachmentInfo.downloadUrl);
+            }}
+          >
+            View/Download
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function ProfessionalJobs() {
   const authContext = React.useContext(AuthContext);
   const navigate = useNavigate();
@@ -25,7 +125,7 @@ function ProfessionalJobs() {
       if (!isAuthenticated || !user || user.role !== 'professional') return;
       
       try {
-        const response = await axios.get('http://localhost:8000/api/profile/', {
+        const response = await axios.get(`${baseUrl}/api/profile/`, {
           withCredentials: true,
         });
         setProfileData(response.data);
@@ -49,9 +149,10 @@ function ProfessionalJobs() {
   useEffect(() => {
     const fetchOpenJobs = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/open-jobs/', {
+        const response = await axios.get(`${baseUrl}/api/open-jobs/`, {
           withCredentials: true,
         });
+        console.log('Fetched jobs with attachments:', response.data); // Debug log
         setOpenJobs(response.data);
         setLoading(false);
       } catch (err) {
@@ -88,7 +189,7 @@ function ProfessionalJobs() {
     const isAvailable = profileData.availability_status === 'Available';
     const isVerified = profileData.verify_status === 'Verified';
     
-    return isAvailable ;
+    return isAvailable;
   }, [profileData]);
 
   const handleApply = async (jobId) => {
@@ -111,7 +212,7 @@ function ProfessionalJobs() {
 
     try {
       const response = await axios.post(
-        'http://localhost:8000/api/apply-to-job/',
+        `${baseUrl}/api/apply-to-job/`,
         { job_id: jobId },
         {
           withCredentials: true,
@@ -181,6 +282,57 @@ function ProfessionalJobs() {
     navigate('/professional-profile');
   };
 
+  // Format currency
+  const formatCurrency = (amount) => {
+    if (!amount) return 'Not specified';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Not specified';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Format datetime
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'Not specified';
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Helper function to get attachment data from job
+  const getJobAttachment = (job) => {
+    // Check for new structured format first
+    if (job.attachment_url || job.attachment_download_url || job.attachment_filename) {
+      return {
+        attachment_url: job.attachment_url,
+        attachment_download_url: job.attachment_download_url,
+        attachment_filename: job.attachment_filename
+      };
+    }
+    
+    // Fallback to legacy attachment field
+    if (job.attachment) {
+      return job.attachment;
+    }
+    
+    return null;
+  };
+
   if (!isAuthenticated || !user) {
     return null;
   }
@@ -191,7 +343,7 @@ function ProfessionalJobs() {
       <div className="jobs-container">
         <div className="jobs-card">
           <h2 className="jobs-title">Available Jobs</h2>
-          <p className="loading-message">Loading...</p>
+          <div className="loading-message">Loading available jobs...</div>
         </div>
       </div>
     );
@@ -222,7 +374,6 @@ function ProfessionalJobs() {
               {profileData.verify_status === 'Not Verified' && profileData.denial_reason && (
                 <span> Reason: {profileData.denial_reason}</span>
               )}
-              
             </p>
           )}
         </div>
@@ -254,6 +405,7 @@ function ProfessionalJobs() {
               value={sortOrder}
               onChange={handleSortChange}
               className="sort-select"
+              style={{color:"black"}}
             >
               <option value="default">Default Order</option>
               <option value="newest">Newest First</option>
@@ -262,31 +414,72 @@ function ProfessionalJobs() {
         </div>
         
         {filteredJobs.length === 0 ? (
-          <p className="empty-message">No open jobs match your search.</p>
+          <div className="empty-message">
+            No open jobs match your search criteria.
+          </div>
         ) : (
           <div className="job-list">
             <ul className="job-list-ul">
-              {currentJobs.map((job) => (
-                <li key={job.job_id} className="job-item">
-                  <h3>Client: {job.client_id?.name || 'N/A'}</h3>
-                  <h4>{job.title || 'Untitled Job'}</h4>
-                  <p>{job.description || 'No description provided'}</p>
-                  <p>Budget: ${job.budget || 'N/A'}</p>
-                  <p>Deadline: {job.deadline ? new Date(job.deadline).toLocaleDateString() : 'N/A'}</p>
-                  <p>Advance Payment: {job.advance_payment ? `$${job.advance_payment}` : 'None'}</p>
-                  <p>Posted: {job.created_at ? new Date(job.created_at).toLocaleString() : 'N/A'}</p>
-                  <button
-                    className={`apply-button ${!canApplyForJobs() ? 'disabled' : ''}`}
-                    onClick={() => handleApply(job.job_id)}
-                    disabled={!canApplyForJobs()}
-                  >
-                    Apply
-                  </button>
-                </li>
-              ))}
+              {currentJobs.map((job) => {
+                const attachmentData = getJobAttachment(job);
+                
+                return (
+                  <li key={job.job_id} className="job-item">
+                    <div className="job-header">
+                      <h3>Client: {job.client_id?.name || 'N/A'}</h3>
+                      <h4>{job.title || 'Untitled Job'}</h4>
+                    </div>
+                    
+                    <div className="job-content">
+                      <p className="job-description">{job.description || 'No description provided'}</p>
+                      
+                      {/* Updated File Attachment Display */}
+                      {attachmentData && (
+                        <FileAttachment attachmentData={attachmentData} />
+                      )}
+                      
+                      <div className="job-details">
+                        <div className="job-detail-item budget">
+                          <span className="detail-icon">💰</span>
+                          <span className="detail-label">Budget:</span>
+                          <span className="detail-value">{formatCurrency(job.budget)}</span>
+                        </div>
+                        <div className="job-detail-item deadline">
+                          <span className="detail-icon">📅</span>
+                          <span className="detail-label">Deadline:</span>
+                          <span className="detail-value">{formatDate(job.deadline)}</span>
+                        </div>
+                        <div className="job-detail-item advance">
+                          <span className="detail-icon">💳</span>
+                          <span className="detail-label">Advance:</span>
+                          <span className="detail-value">
+                            {job.advance_payment ? formatCurrency(job.advance_payment) : 'None'}
+                          </span>
+                        </div>
+                        <div className="job-detail-item posted">
+                          <span className="detail-icon">🕒</span>
+                          <span className="detail-label">Posted:</span>
+                          <span className="detail-value">{formatDateTime(job.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="job-actions">
+                      <button
+                        className={`apply-button ${!canApplyForJobs() ? 'disabled' : ''}`}
+                        onClick={() => handleApply(job.job_id)}
+                        disabled={!canApplyForJobs()}
+                      >
+                        {canApplyForJobs() ? '🚀 Apply Now' : '❌ Cannot Apply'}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
-            <div className="pagination-container">
-              {totalPages > 1 && (
+            
+            {totalPages > 1 && (
+              <div className="pagination-container">
                 <div className="pagination">
                   <button
                     onClick={() => paginate(currentPage - 1)}
@@ -312,15 +505,16 @@ function ProfessionalJobs() {
                     Next
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
-        <p className="back-link">
-          <a href="#" onClick={() => navigate('/professional-dashboard')}>
+        
+        <div className="back-link">
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/professional-dashboard'); }}>
             Back to Dashboard
           </a>
-        </p>
+        </div>
       </div>
     </div>
   );

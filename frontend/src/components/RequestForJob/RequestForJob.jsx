@@ -5,6 +5,8 @@ import { AuthContext } from '../../context/AuthContext';
 import Swal from 'sweetalert2';
 import './RequestForJob.css';
 
+const baseUrl = import.meta.env.VITE_API_URL;
+
 function ClientJobApplications() {
   const { jobId } = useParams();
   const authContext = React.useContext(AuthContext);
@@ -17,17 +19,14 @@ function ClientJobApplications() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [showUnavailable, setShowUnavailable] = useState(false);
-  const [minRating, setMinRating] = useState(''); // Minimum rating filter
-  const [minExperience, setMinExperience] = useState(''); // New: Minimum experience filter
+  const [minRating, setMinRating] = useState('');
+  const [minExperience, setMinExperience] = useState('');
 
   useEffect(() => {
     const fetchApplications = async () => {
-      
-
       try {
-        const response = await axios.get(`http://localhost:8000/api/job-applications/${jobId}/`, {
+        const response = await axios.get(`${baseUrl}/api/job-applications/${jobId}/`, {
           withCredentials: true,
-          
         });
         console.log('Fetch Applications Response:', response.data);
         setApplications(Array.isArray(response.data.applications) ? response.data.applications : []);
@@ -52,8 +51,6 @@ function ClientJobApplications() {
   }, [isAuthenticated, user, jobId, navigate, token]);
 
   const handlePayment = async (applicationId) => {
-    
-
     const application = applications.find(app => app.application_id === applicationId);
     if (!application || application.professional_details?.availability_status !== 'Available') {
       Swal.fire({
@@ -67,11 +64,10 @@ function ClientJobApplications() {
 
     try {
       const response = await axios.post(
-        `http://localhost:8000/api/accept-application/${applicationId}/`,
+        `${baseUrl}/api/accept-application/${applicationId}/`,
         {},
         {
           withCredentials: true,
-         
         }
       );
       const { order_id, amount, currency, key, name, description, application_id, payment_type } = response.data;
@@ -86,7 +82,7 @@ function ClientJobApplications() {
         handler: async function (response) {
           try {
             const verifyResponse = await axios.post(
-              'http://localhost:8000/api/verify-payment/',
+              `${baseUrl}/api/verify-payment/`,
               {
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_order_id: response.razorpay_order_id,
@@ -96,7 +92,6 @@ function ClientJobApplications() {
               },
               {
                 withCredentials: true,
-               
               }
             );
 
@@ -160,7 +155,6 @@ function ClientJobApplications() {
     setShowUnavailable(!showUnavailable);
   };
 
-  // Updated filtering logic
   const filteredApplications = applications.filter((app) => {
     const meetsAvailability = showUnavailable || app.professional_details?.availability_status === 'Available';
     const meetsRating = minRating === '' || (app.professional_details?.avg_rating || 0) >= Number(minRating);
@@ -176,41 +170,58 @@ function ClientJobApplications() {
 
   return (
     <div className="client-applications-container">
-      <h1>{jobTitle ? `${jobTitle} (Job ID: ${jobId})` : `Loading Job Title (Job ID: ${jobId})`}</h1>
+      <div className="page-header">
+        <h1>{jobTitle ? `${jobTitle}` : `Loading Job Title`}</h1>
+        <p className="job-id">Job ID: {jobId}</p>
+      </div>
+
       {error && <div className="error-message">{error}</div>}
       {message && <div className="success-message">{message}</div>}
 
       {loading ? (
-        <p>Loading applications...</p>
+        <div className="loading-container">
+          <p>Loading applications...</p>
+        </div>
       ) : applications.length === 0 ? (
-        <p>No applications yet.</p>
+        <div className="no-applications">
+          <p>No applications received yet.</p>
+        </div>
       ) : (
         <>
           <div className="applications-header">
-            <h2>Applications ({filteredApplications.length})</h2>
+            <div className="header-content">
+              <h2>Applications Received ({filteredApplications.length})</h2>
+            </div>
+            
             <div className="filter-controls">
-              <label style={{color:'black'}}>
-                Minimum Rating:
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="5"
-                  value={minRating}
-                  onChange={(e) => setMinRating(e.target.value)}
-                  placeholder="e.g., 4.0"
-                />
-              </label>
-              <label style={{color:'black'}}>
-                Minimum Experience (Years):
-                <input
-                  type="number"
-                  min="0"
-                  value={minExperience}
-                  onChange={(e) => setMinExperience(e.target.value)}
-                  placeholder="e.g., 3"
-                />
-              </label>
+              <div className="filter-group">
+                <label>
+                  Min Rating:
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="5"
+                    value={minRating}
+                    onChange={(e) => setMinRating(e.target.value)}
+                    placeholder="4.0"
+                  />
+                </label>
+              </div>
+              
+              <div className="filter-group">
+                <label>
+                  Min Experience:
+                  <input
+                    type="number"
+                    min="0"
+                    value={minExperience}
+                    onChange={(e) => setMinExperience(e.target.value)}
+                    placeholder="Years"
+                  />
+                </label>
+              </div>
+              
               {unavailableCount > 0 && (
                 <button
                   className="toggle-unavailable-btn"
@@ -222,69 +233,108 @@ function ClientJobApplications() {
             </div>
           </div>
 
-          <ul className="applications-list">
+          <div className="applications-grid">
             {filteredApplications.map((app) => {
               const isAvailable = app.professional_details?.availability_status === 'Available';
               const isVerified = app.professional_details?.verify_status === 'Verified';
 
               return (
-                <li key={app.application_id} className={`application-item ${!isAvailable ? 'unavailable' : ''}`}>
-                  <div className="application-header">
-                    <h3>
-                      {app.professional_details?.user?.name || 'Unknown'}
-                      {isVerified && (
-                        <span className="verified-badge">Verified</span>
-                      )}
+                <div key={app.application_id} className={`application-card ${!isAvailable ? 'unavailable' : ''}`}>
+                  <div className="card-header">
+                    <div className="professional-name">
+                      <h3>{app.professional_details?.user?.name || 'Unknown Professional'}</h3>
+                      {isVerified && <span className="verified-badge">✓ Verified</span>}
+                    </div>
+                    <div className="status-indicators">
                       <span className={`availability-status ${isAvailable ? 'available' : 'not-available'}`}>
                         {app.professional_details?.availability_status || 'Unknown'}
                       </span>
-                    </h3>
+                      <span className={`application-status ${app.status.toLowerCase()}`}>
+                        {app.status}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="professional-details">
-                    <p><strong>Bio:</strong> {app.professional_details?.bio || 'N/A'}</p>
-                    <p><strong>Skills:</strong> {Array.isArray(app.professional_details?.skills) 
-                      ? app.professional_details?.skills.join(', ') 
-                      : app.professional_details?.skills || 'N/A'}
-                    </p>
-                    <p><strong>Experience:</strong> {app.professional_details?.experience_years || 0} years</p>
-                    <p><strong>Rating:</strong> {app.professional_details?.avg_rating || 'No ratings yet'}</p>
-                    <p><strong>Application Status:</strong> <span className={`status-badge ${app.status.toLowerCase()}`}>{app.status}</span></p>
-                    <p><strong>Applied At:</strong> {new Date(app.applied_at).toLocaleString()}</p>
+                  <div className="card-content">
+                    <div className="professional-info">
+                      <div className="info-row">
+                        <div className="info-item">
+                          <span className="label">Experience:</span>
+                          <span className="value">{app.professional_details?.experience_years || 0} years</span>
+                        </div>
+                        <div className="info-item">
+                          <span className="label">Rating:</span>
+                          <span className="value rating">
+                            {app.professional_details?.avg_rating ? 
+                              `⭐ ${app.professional_details.avg_rating}` : 
+                              'No ratings'
+                            }
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="bio-section">
+                        <span className="label">Bio:</span>
+                        <p className="bio-text">{app.professional_details?.bio || 'No bio provided'}</p>
+                      </div>
+
+                      <div className="skills-section">
+                        <span className="label">Skills:</span>
+                        <div className="skills-list">
+                          {Array.isArray(app.professional_details?.skills) 
+                            ? app.professional_details.skills.map((skill, index) => (
+                                <span key={index} className="skill-tag">{skill}</span>
+                              ))
+                            : <span className="skill-tag">{app.professional_details?.skills || 'No skills listed'}</span>
+                          }
+                        </div>
+                      </div>
+
+                      <div className="application-meta">
+                        <span className="applied-date">
+                          Applied: {new Date(app.applied_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
                   {app.status === 'Applied' && (
-                    <div className="application-actions">
-                      <button
-                        onClick={() => handleAccept(app.application_id)}
-                        className={`accept-btn ${!isAvailable ? 'disabled' : ''}`}
-                        disabled={!isAvailable}
-                        title={!isAvailable ? "Professional is unavailable" : "Accept application"}
-                      >
-                        {isAvailable ? 'Accept & Pay' : 'Professional Unavailable'}
-                      </button>
-
-                      {!isAvailable && (
-                        <p className="unavailable-note">
-                          This professional's status has changed since they applied and they are no longer available.
-                        </p>
+                    <div className="card-actions">
+                      {isAvailable ? (
+                        <button 
+                          onClick={() => handleAccept(app.application_id)}
+                          className="accept-btn"
+                        >
+                          Accept & Pay
+                        </button>
+                      ) : (
+                        <div className="unavailable-section">
+                          <button className="unavailable-btn" disabled>
+                            Professional Unavailable
+                          </button>
+                          <p className="unavailable-note">
+                            This professional is no longer available for new projects.
+                          </p>
+                        </div>
                       )}
                     </div>
                   )}
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </div>
 
           {applications.length > 0 && filteredApplications.length === 0 && (
-            <p className="no-available">No available professionals found. Try adjusting the filters.</p>
+            <div className="no-results">
+              <p>No professionals match your current filters. Try adjusting the criteria.</p>
+            </div>
           )}
         </>
       )}
 
       <div className="actions-footer">
         <button onClick={() => navigate('/client-project')} className="back-btn">
-          Back to Projects
+          ← Back to Projects
         </button>
       </div>
     </div>

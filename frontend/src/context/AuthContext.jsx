@@ -2,7 +2,8 @@ import React, { createContext, useReducer, useEffect, useState } from 'react';
 import axios from 'axios';
 
 export const AuthContext = createContext();
-
+const baseUrl = import.meta.env.VITE_API_URL;
+// ADD THIS MISSING authReducer FUNCTION
 const authReducer = (state, action) => {
   switch (action.type) {
     case 'LOGIN':
@@ -26,26 +27,36 @@ export const AuthProvider = ({ children }) => {
 
   // Function to refresh the access token
   const refreshToken = async () => {
-    if (refreshing) return;
+    if (refreshing) {
+      console.log('Already refreshing, skipping...');
+      return false;
+    }
+    
     setRefreshing(true);
     
     try {
+      console.log('Attempting to refresh token...');
       const response = await axios.post(
-        'http://localhost:8000/api/token/refresh/',
-        {}, // No body needed as the refresh token is in the HTTP-only cookie
-        { withCredentials: true }
+        `${baseUrl}/api/token/refresh/`,
+        {}, 
+        { 
+          withCredentials: true,
+          timeout: 10000 // Add timeout
+        }
       );
       
-      // If successful, the server will have set a new access_token cookie
-      // We can return true to indicate success
-      setRefreshing(false);
+      console.log('Token refresh successful');
       return true;
     } catch (error) {
-      console.error('Token refresh failed:', error);
-      // If refresh fails, log the user out
-      dispatch({ type: 'LOGOUT' });
-      setRefreshing(false);
+      console.error('Token refresh failed:', error.response?.status, error.response?.data);
+      
+      // Only logout if it's actually a 401, not network errors
+      if (error.response?.status === 401) {
+        dispatch({ type: 'LOGOUT' });
+      }
       return false;
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -56,44 +67,53 @@ export const AuthProvider = ({ children }) => {
       async (error) => {
         const originalRequest = error.config;
         
+        // Prevent infinite loops
+        if (originalRequest._retry || refreshing) {
+          return Promise.reject(error);
+        }
+        
         // If the error is 401 and we haven't tried to refresh the token yet
-        if (error.response?.status === 401 && !originalRequest._retry && state.isAuthenticated) {
+        if (error.response?.status === 401 && state.isAuthenticated) {
           originalRequest._retry = true;
           
-          // Try to refresh the token
+          console.log('401 error detected, attempting token refresh...');
           const refreshed = await refreshToken();
           
-          // If refresh was successful, retry the original request
           if (refreshed) {
+            console.log('Token refreshed, retrying original request');
             return axios(originalRequest);
+          } else {
+            console.log('Token refresh failed');
+            dispatch({ type: 'LOGOUT' });
           }
         }
         
-        // Otherwise, just pass on the error
         return Promise.reject(error);
       }
     );
     
-    // Clean up interceptor on unmount
     return () => {
       axios.interceptors.response.eject(interceptor);
     };
-  }, [state.isAuthenticated]);
+  }, [state.isAuthenticated, refreshing]);
 
   // Check authentication status on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/check-auth/', {
+        console.log('Checking authentication status...');
+        const response = await axios.get(`${baseUrl}/api/check-auth/`, {
           withCredentials: true,
         });
 
         if (response.data.isAuthenticated) {
+          console.log('User is authenticated');
           dispatch({
             type: 'LOGIN',
             payload: { user: response.data.user },
           });
         } else {
+          console.log('User not authenticated, attempting token refresh...');
           // Try to refresh the token if not authenticated
           const refreshed = await refreshToken();
           
@@ -102,16 +122,18 @@ export const AuthProvider = ({ children }) => {
             dispatch({ type: 'LOGOUT' });
           } else {
             // If refresh worked, check auth again
-            const newResponse = await axios.get('http://localhost:8000/api/check-auth/', {
+            const newResponse = await axios.get(`${baseUrl}//api/check-auth/`, {
               withCredentials: true,
             });
             
             if (newResponse.data.isAuthenticated) {
+              console.log('Authentication successful after refresh');
               dispatch({
                 type: 'LOGIN',
                 payload: { user: newResponse.data.user },
               });
             } else {
+              console.log('Authentication failed after refresh');
               dispatch({ type: 'LOGOUT' });
             }
           }
@@ -129,12 +151,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      console.log('Attempting login...');
       const response = await axios.post(
-        'http://localhost:8000/api/login/',
+        `${baseUrl}/api/login/`,
         { email, password },
         { withCredentials: true }
       );
       
+      console.log('Login successful');
       dispatch({
         type: 'LOGIN',
         payload: { user: response.data.user }
@@ -142,6 +166,7 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, data: response.data };
     } catch (error) {
+      console.error('Login failed:', error.response?.data || error.message);
       return { 
         success: false, 
         error: error.response?.data?.error || 'Login failed'
@@ -151,7 +176,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.post('http://localhost:8000/api/logout/', {}, { withCredentials: true });
+      // FIXED: Use the correct URL for logout
+      await axios.post(`${baseUrl}/api/logout/`, {}, { withCredentials: true });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {

@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./Register.css";
-
+const baseUrl = import.meta.env.VITE_API_URL;
 function Register() {
   const [formData, setFormData] = useState({
     email: "",
@@ -52,7 +52,7 @@ function Register() {
     }
 
     try {
-      await axios.post("http://localhost:8000/api/register/", formData, {
+      await axios.post(`${baseUrl}/api/register/`, formData, {
         withCredentials: true,
       });
       navigate("/verify-otp");

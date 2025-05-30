@@ -7,7 +7,7 @@ import './ProfessionalDashboardHeader.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExclamationCircle, faComments } from '@fortawesome/free-solid-svg-icons';
 
-
+const baseUrl = import.meta.env.VITE_API_URL;
 function ProfessionalHeader() {
   const { dispatch } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ function ProfessionalHeader() {
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:8000/api/logout/', {}, { withCredentials: true });
+      await axios.post(`${baseUrl}/api/logout/`, {}, { withCredentials: true });
       dispatch({ type: 'LOGOUT' });
       navigate('/login');
     } catch (err) {
@@ -30,7 +30,7 @@ function ProfessionalHeader() {
 
   const fetchUnreadCount = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/conversations/unread-count/', {
+      const response = await axios.get(`${baseUrl}/api/conversations/unread-count/`, {
         withCredentials: true,
       });
       setUnreadMessagesCount(response.data.unread_count);

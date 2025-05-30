@@ -6,6 +6,7 @@ import './ClinetDashboardHeader.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExclamationCircle, faComments } from '@fortawesome/free-solid-svg-icons';
 import Notifications from '../Notification/Notification';
+const baseUrl = import.meta.env.VITE_API_URL;
 function ClientHeader() {
   const { dispatch } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ function ClientHeader() {
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:8000/api/logout/', {}, { withCredentials: true });
+      await axios.post(`${baseUrl}/api/logout/`, {}, { withCredentials: true });
       dispatch({ type: 'LOGOUT' });
       navigate('/login');
     } catch (err) {
@@ -31,7 +32,7 @@ function ClientHeader() {
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('http://localhost:8000/api/client/transactions/', {
+      const response = await axios.get(`${baseUrl}/api/client/transactions/`, {
         withCredentials: true,
       });
       setTransactions(response.data.transactions || []);
@@ -44,7 +45,7 @@ function ClientHeader() {
 
   const fetchUnreadCount = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/conversations/unread-count/', {
+      const response = await axios.get(`${baseUrl}/api/conversations/unread-count/`, {
         withCredentials: true,
       });
       setUnreadMessagesCount(response.data.unread_count);

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 import './ProfessionalTransaction.css';
-
+const baseUrl = import.meta.env.VITE_API_URL;
 function ProfessionalTransactions() {
   const { user } = useContext(AuthContext) || { user: null };
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ function ProfessionalTransactions() {
     const fetchTransactions = async () => {
       setLoading(true);
       try {
-        const response = await axios.get('http://localhost:8000/api/professional/transactions/', {
+        const response = await axios.get(`${baseUrl}/api/professional/transactions/`, {
           withCredentials: true,
         });
         const fetchedTransactions = response.data.transactions || [];
@@ -57,7 +57,7 @@ function ProfessionalTransactions() {
       const jobTitle = (transaction.job_application?.job_title || 'Unknown Job').toLowerCase();
       const clientName = (transaction.job_application?.client_name || 'Unknown Client').toLowerCase();
       const paymentType = (transaction.payment_type || 'N/A').toLowerCase();
-      const amount = ((transaction.amount / 100).toFixed(2) || '0.00').toString();
+      const amount = formatCurrency(transaction.amount / 100).toLowerCase();
 
       if (searchCategory === 'all') {
         return jobTitle.includes(term) || 
@@ -88,9 +88,32 @@ function ProfessionalTransactions() {
     setSearchCategory(e.target.value);
   };
 
-  if (loading) {
-    return <div className="spinner-container"><p>Loading transactions...</p></div>;
-  }
+  // Format currency
+  const formatCurrency = (amount) => {
+    if (!amount && amount !== 0) return '₹0.00';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2
+    }).format(amount);
+  };
+
+  // Get payment type styling
+  const getPaymentTypeClass = (paymentType) => {
+    if (!paymentType) return '';
+    const type = paymentType.toLowerCase();
+    if (type.includes('advance')) return 'payment-type-advance';
+    if (type.includes('final') || type.includes('remaining')) return 'payment-type-final';
+    return '';
+  };
+
+  // Enhanced Loading Spinner Component
+  const LoadingSpinner = () => (
+    <div className="spinner-container">
+      <div className="loading-spinner"></div>
+      <p>Loading your transaction history...</p>
+    </div>
+  );
 
   // Paginate transactions
   const paginate = (items, page) => {
@@ -114,6 +137,8 @@ function ProfessionalTransactions() {
     for (let i = 1; i <= pageCount; i++) {
       pages.push(i);
     }
+
+    if (pageCount <= 1) return null;
 
     return (
       <div className="pagination">
@@ -144,6 +169,37 @@ function ProfessionalTransactions() {
     );
   };
 
+  // Transaction Card Component for Mobile
+  const TransactionCard = ({ transaction }) => (
+    <div className="transaction-card">
+      <h4>{transaction.job_application?.job_title || 'Unknown Job'}</h4>
+      <div className="card-details">
+        <div className="detail-item">
+          <span className="detail-label">Client</span>
+          <span className="detail-value">{transaction.job_application?.client_name || 'Unknown Client'}</span>
+        </div>
+        <div className="detail-item">
+          <span className="detail-label">Amount</span>
+          <span className="detail-value amount">{formatCurrency(transaction.amount / 100)}</span>
+        </div>
+        <div className="detail-item">
+          <span className="detail-label">Payment Type</span>
+          <span className={`detail-value ${getPaymentTypeClass(transaction.payment_type)}`}>
+            {transaction.payment_type || 'N/A'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="transactions-container">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
   return (
     <div className="transactions-container">
       <h2>Transaction History</h2>
@@ -162,7 +218,6 @@ function ProfessionalTransactions() {
           value={searchCategory} 
           onChange={handleSearchCategoryChange}
           className="search-category"
-          
         >
           <option value="all">All Fields</option>
           <option value="job">Job Title</option>
@@ -173,15 +228,18 @@ function ProfessionalTransactions() {
       </div>
 
       {filteredTransactions.length === 0 ? (
-        <p className="no-results">No transactions found matching your search criteria.</p>
+        <div className="no-results">
+          {searchTerm ? 'No transactions found matching your search criteria.' : 'No transactions found.'}
+        </div>
       ) : (
         <>
+          {/* Desktop Table View */}
           <table className="transactions-table">
             <thead>
               <tr>
                 <th style={{color:'black'}}>Job Title</th>
                 <th style={{color:'black'}}>Client</th>
-                <th style={{color:'black'}}>Amount (INR)</th>
+                <th style={{color:'black'}}>Amount</th>
                 <th style={{color:'black'}}>Type</th>
               </tr>
             </thead>
@@ -190,15 +248,32 @@ function ProfessionalTransactions() {
                 <tr key={transaction.razorpay_order_id}>
                   <td>{transaction.job_application?.job_title || 'Unknown Job'}</td>
                   <td>{transaction.job_application?.client_name || 'Unknown Client'}</td>
-                  <td>{(transaction.amount / 100).toFixed(2) || '0.00'}</td>
-                  <td>{transaction.payment_type || 'N/A'}</td>
+                  <td>{formatCurrency(transaction.amount / 100)}</td>
+                  <td>
+                    <span className={getPaymentTypeClass(transaction.payment_type)}>
+                      {transaction.payment_type || 'N/A'}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="results-info">
-            Showing {filteredTransactions.length} of {transactions.length} transactions
+
+          {/* Mobile Card View */}
+          <div className="transaction-cards">
+            {paginate(filteredTransactions, currentPage).map((transaction) => (
+              <TransactionCard 
+                key={transaction.razorpay_order_id} 
+                transaction={transaction} 
+              />
+            ))}
           </div>
+
+          <div className="results-info">
+            Showing {Math.min(filteredTransactions.length, itemsPerPage)} of {filteredTransactions.length} transactions
+            {searchTerm && ` (filtered from ${transactions.length} total)`}
+          </div>
+          
           <PaginationControls totalItems={filteredTransactions} />
         </>
       )}

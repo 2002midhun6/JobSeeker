@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import './VerifyOTP.css';
-
+import './VerifyOtp.css';
+const baseUrl = import.meta.env.VITE_API_URL;
 function VerifyOTP() {
   const [formData, setFormData] = useState({ email: '', otp: '' });
   const [error, setError] = useState('');
@@ -21,7 +21,7 @@ function VerifyOTP() {
     try {
       setError('');
       setSuccess('');
-      await axios.post('http://localhost:8000/api/verify-otp/', formData, {
+      await axios.post(`${baseUrl}/api/verify-otp/`, formData, {
         withCredentials: true,
       });
       setSuccess('Email verified successfully!');
@@ -37,7 +37,7 @@ function VerifyOTP() {
       setError('');
       setSuccess('');
       setIsResendLoading(true);
-      const response = await axios.post('http://localhost:8000/api/resend-otp/', { email: formData.email }, {
+      const response = await axios.post(`${baseUrl}/api/resend-otp/`, { email: formData.email }, {
         withCredentials: true,
       });
       setSuccess(response.data.message);

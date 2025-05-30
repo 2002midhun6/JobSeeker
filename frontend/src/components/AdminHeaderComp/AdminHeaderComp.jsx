@@ -4,7 +4,7 @@ import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext'; // Adjust path
 import axios from 'axios';
 import './AdminHeaderComp.css'
-
+const baseUrl = import.meta.env.VITE_API_URL;
 function AdminHeaderComp() {
   const { dispatch } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ function AdminHeaderComp() {
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:8000/api/logout/', {}, { withCredentials: true });
+      await axios.post(`${baseUrl}/api/logout/`, {}, { withCredentials: true });
       dispatch({ type: 'LOGOUT' });
       navigate('/login');
     } catch (err) {

@@ -4,7 +4,7 @@ import axios from 'axios';
 import VideoCall from '../vediocall/VedioCall';
 import './ConversationChat.css';
 import { AuthContext } from '../../context/AuthContext';
-
+const baseUrl = import.meta.env.VITE_API_URL;
 // Modal Component for Image Enlargement
 function ImageModal({ isOpen, onClose, imageSrc }) {
   if (!isOpen) return null;
@@ -18,6 +18,11 @@ function ImageModal({ isOpen, onClose, imageSrc }) {
     </div>
   );
 }
+const isValidDate = (dateString) => {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  return date instanceof Date && !isNaN(date.getTime());
+};
 
 function ConversationChat() {
   const { jobId } = useParams();
@@ -55,7 +60,7 @@ const { user} = useContext(AuthContext);
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/check-auth/', {
+        const response = await axios.get(`${baseUrl}/api/check-auth/`, {
           withCredentials: true,
         });
         
@@ -80,7 +85,7 @@ const { user} = useContext(AuthContext);
       try {
         setLoading(true);
         console.log(`Fetching conversation for job ${jobId}`);
-        const response = await axios.get(`http://localhost:8000/api/conversations/job/${jobId}/`, {
+        const response = await axios.get(`${baseUrl}/api/conversations/job/${jobId}/`, {
           withCredentials: true,
         });
         console.log('Conversation data:', response.data);
@@ -128,7 +133,7 @@ const { user} = useContext(AuthContext);
       console.log(`WebSocket attempt ${socketRetries + 1}/${MAX_SOCKET_RETRIES}`);
 
       axios
-        .get('http://localhost:8000/api/ws-auth-token/', {
+        .get('${baseUrl}/api/ws-auth-token/', {
           withCredentials: true,
         })
         .then((response) => {
@@ -139,7 +144,7 @@ const { user} = useContext(AuthContext);
             throw new Error('No authentication token received');
           }
 
-          const wsUrl = `ws://localhost:8000/ws/chat/${jobId}/?token=${encodeURIComponent(token)}`;
+          const wsUrl = `wss://api.midhung.in/ws/chat/${jobId}/?token=${encodeURIComponent(token)}`;
           console.log('Connecting to WebSocket:', wsUrl);
 
           ws = new WebSocket(wsUrl);
@@ -155,13 +160,19 @@ const { user} = useContext(AuthContext);
             try {
               const data = JSON.parse(event.data);
               console.log('Received:', data);
-
+          
+              // Handle heartbeat messages separately - don't add to chat
+             
+          
               if (data.event === 'user_joined' || data.event === 'user_left') {
                 console.log(`User ${data.event}:`, data);
+                // Optionally add a system message for user join/leave
+                // addSystemMessage(`${data.user_name} ${data.event === 'user_joined' ? 'joined' : 'left'} the chat`);
               } else if (data.error) {
                 setSocketError(data.error);
                 console.error('WebSocket error message:', data.error);
-              } else {
+              } else if (data.id && data.content) {
+                // Only add messages that have both ID and content
                 setMessages((prev) => {
                   if (prev.some((msg) => msg.id === data.id)) return prev;
                   return [...prev, data];
@@ -171,7 +182,6 @@ const { user} = useContext(AuthContext);
               console.error('Parse error:', error, event.data);
             }
           };
-
           ws.onerror = (error) => {
             console.error('WebSocket error:', error);
             setSocketConnected(false);
@@ -251,13 +261,13 @@ const { user} = useContext(AuthContext);
   const getValidFileUrl = (url) => {
     if (!url) return null;
     if (url.startsWith('http')) return url;
-    return `http://localhost:8000${url.startsWith('/') ? '' : '/'}${url}`;
+    return `https://jobseeker-69742084525.us-central1.run.app${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const recoverFile = async (messageId) => {
     try {
       const response = await axios.post(
-        'http://localhost:8000/api/conversations/file-recovery/',
+        '${baseUrl}/api/conversations/file-recovery/',
         { message_id: messageId },
         { withCredentials: true }
       );
@@ -280,7 +290,7 @@ const { user} = useContext(AuthContext);
     formData.append('file', file);
     try {
       const response = await axios.post(
-        `http://localhost:8000/api/conversations/job/${jobId}/file/`,
+        `${baseUrl}/api/conversations/job/${jobId}/file/`,
         formData,
         {
           withCredentials: true,
@@ -310,14 +320,35 @@ const { user} = useContext(AuthContext);
 
   const groupMessagesByDate = () => {
     const groups = {};
-    messages.forEach((message) => {
-      const date = new Date(message.created_at).toLocaleDateString();
-      if (!groups[date]) groups[date] = [];
-      groups[date].push(message);
+    
+    // Filter out non-chat messages and messages with invalid dates
+    const validMessages = messages.filter((message) => {
+      // Skip heartbeat and other system messages that shouldn't be displayed
+      if (message.type === 'system') {
+        return false;
+      }
+      
+      // Skip messages without valid timestamps
+      if (!isValidDate(message.created_at)) {
+        console.warn('Message with invalid timestamp:', message);
+        return false;
+      }
+      
+      return true;
     });
+    
+    validMessages.forEach((message) => {
+      try {
+        const date = new Date(message.created_at).toLocaleDateString();
+        if (!groups[date]) groups[date] = [];
+        groups[date].push(message);
+      } catch (error) {
+        console.error('Error processing message date:', error, message);
+      }
+    });
+    
     return groups;
   };
-
   const messageGroups = groupMessagesByDate();
 
   const openImageModal = (imageSrc) => {

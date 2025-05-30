@@ -1,116 +1,905 @@
-.job-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    background: #f0f2f5;
-    padding: 20px;
-    
+/* Enhanced Job Posting Page CSS */
+
+.job-page-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e8f4fd 100%);
+  padding: 20px;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+.job-page-content {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Auth Loading */
+.auth-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e8f4fd 100%);
+}
+
+/* Page Header */
+.page-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 24px;
+  padding: 32px;
+  margin-bottom: 32px;
+  box-shadow: 0 20px 60px rgba(102, 126, 234, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="%23ffffff" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+  pointer-events: none;
+}
+
+.header-content {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 36px;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title-icon {
+  font-size: 40px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+.page-subtitle {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Form Progress */
+.form-progress {
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.progress-text {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.progress-percentage {
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.progress-details {
+  text-align: center;
+}
+
+.progress-detail {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Main Content Layout */
+.form-container {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 32px;
+}
+
+/* Form Card */
+.form-card {
+  background: white;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+/* Global Error */
+.global-error {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.global-error .error-icon {
+  font-size: 20px;
+}
+
+.global-error .error-text {
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Form Sections */
+.form-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 24px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.section-icon {
+  font-size: 24px;
+}
+
+/* Form Fields */
+.form-field {
+  margin-bottom: 24px;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+}
+
+.field-icon {
+  font-size: 16px;
+}
+
+.label-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.required-star {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.field-wrapper {
+  position: relative;
+}
+
+.field-input {
+  width: 100%;
+  padding: 16px 20px;
+  border: 2px solid #e8ecf0;
+  border-radius: 12px;
+  font-size: 16px;
+  outline: none;
+  transition: all 0.3s ease;
+  background: #f8fafc;
+  color: #374151;
+  font-family: inherit;
+}
+
+.field-input:focus {
+  border-color: #3b82f6;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.field-input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+textarea.field-input {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.5;
+}
+
+/* Field States */
+.form-field.has-error .field-input {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.form-field.has-error .field-input:focus {
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+}
+
+.form-field.is-focused .field-label {
+  color: #3b82f6;
+}
+
+.form-field.has-value .field-input {
+  background: white;
+}
+
+/* Field Messages */
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+.field-error .error-icon {
+  font-size: 14px;
+}
+
+.field-error .error-message {
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field-help {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+}
+
+.field-help .help-icon {
+  font-size: 14px;
+}
+
+.field-help .help-message {
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Budget Fields */
+.budget-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Budget Calculator */
+.budget-calculator {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1px solid #bbf7d0;
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.calculator-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #15803d;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calculator-icon {
+  font-size: 18px;
+}
+
+.budget-display {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.budget-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #d1fae5;
+}
+
+.budget-item.advance {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-color: #fcd34d;
+}
+
+.budget-item.remaining {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-color: #93c5fd;
+}
+
+.budget-label {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.budget-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #059669;
+}
+
+.budget-item.advance .budget-value {
+  color: #d97706;
+}
+
+.budget-item.remaining .budget-value {
+  color: #1d4ed8;
+}
+
+.budget-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #fef3c7, #fed7aa);
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #92400e;
+  font-weight: 500;
+}
+
+.warning-icon {
+  font-size: 14px;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 2px solid #f1f5f9;
+  justify-content: flex-end;
+}
+
+.primary-button, .secondary-button {
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  border: none;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.primary-button {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+.primary-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(59, 130, 246, 0.4);
+}
+
+.primary-button:disabled {
+  background: #9ca3af;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.secondary-button {
+  background: white;
+  color: #374151;
+  border: 2px solid #e8ecf0;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e0;
+  transform: translateY(-2px);
+}
+
+.button-icon {
+  font-size: 18px;
+}
+
+/* Tips Sidebar */
+.tips-sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.tips-card {
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  position: sticky;
+  top: 20px;
+}
+
+.tips-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tips-icon {
+  font-size: 20px;
+}
+
+.tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tip-item {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-radius: 12px;
+  border: 1px solid #e8ecf0;
+  transition: all 0.3s ease;
+}
+
+.tip-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.tip-icon {
+  font-size: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.tip-content {
+  flex: 1;
+}
+
+.tip-content strong {
+  color: #1f2937;
+  font-weight: 700;
+  font-size: 14px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.tip-content p {
+  color: #6b7280;
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .form-container {
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
   
-  .job-card {
-    background: white;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  .tips-sidebar {
+    order: -1;
+  }
+  
+  .tips-card {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .job-page-container {
+    padding: 16px;
+  }
+  
+  .page-header {
+    padding: 24px;
+    border-radius: 20px;
+  }
+  
+  .page-title {
+    font-size: 28px;
+  }
+  
+  .title-icon {
+    font-size: 32px;
+  }
+  
+  .page-subtitle {
+    font-size: 16px;
+  }
+  
+  .form-card {
+    padding: 24px;
+    border-radius: 20px;
+  }
+  
+  .budget-fields {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .primary-button, .secondary-button {
     width: 100%;
-    max-width: 500px;
   }
   
-  .job-title {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #333;
+  .tips-card {
+    padding: 20px;
+    border-radius: 16px;
   }
   
-  .error-message {
-    background: #ffebee;
-    color: #c62828;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    text-align: center;
+  .tips-list {
+    gap: 12px;
   }
   
-  .success-message {
-    background: #e8f5e9;
-    color: #2e7d32;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    text-align: center;
-  }
-  
-  .job-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  .form-group {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .form-group label {
-    margin-bottom: 5px;
-    color: #555;
-  }
-  
-  .form-group input,
-  .form-group textarea {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 16px;
-  }
-  
-  .form-group textarea {
-    min-height: 100px;
-    resize: vertical;
-  }
-  
-  .job-button {
+  .tip-item {
     padding: 12px;
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background 0.3s;
   }
-  .input-error {
-    border: 1px solid #dc3545 !important;
-    background-color: rgba(220, 53, 69, 0.05);
+}
+
+@media (max-width: 480px) {
+  .page-header {
+    padding: 20px;
   }
   
-  .error-text {
-    color: #dc3545;
-    font-size: 0.85rem;
-    margin-top: 5px;
-    font-weight: 500;
-  }
-  
-  .job-button:hover {
-    background: #0056b3;
-  }
-  
-  .job-button:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-  }
-  
-  .back-link {
+  .page-title {
+    font-size: 24px;
+    flex-direction: column;
     text-align: center;
-    margin-top: 20px;
+    gap: 8px;
   }
   
-  .back-link a {
-    color: #007bff;
-    text-decoration: none;
+  .title-icon {
+    font-size: 28px;
   }
   
-  .back-link a:hover {
-    text-decoration: underline;
+  .form-card {
+    padding: 20px;
   }
+  
+  .field-input {
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+  
+  .section-title {
+    font-size: 18px;
+  }
+  
+  .budget-calculator {
+    padding: 16px;
+  }
+  
+  .budget-item {
+    padding: 10px 12px;
+  }
+  
+  .primary-button, .secondary-button {
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+}
+/* File Upload Styles - Add these to your JobPage.css */
+
+.file-upload-zone {
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  transition: all 0.3s ease;
+  background-color: #f9fafb;
+  cursor: pointer;
+}
+
+.file-upload-zone:hover {
+  border-color: #6366f1;
+  background-color: #f0f9ff;
+}
+
+.file-upload-zone.drag-over {
+  border-color: #6366f1;
+  background-color: #eff6ff;
+  transform: scale(1.02);
+}
+
+.file-upload-zone.has-error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-icon {
+  font-size: 48px;
+  opacity: 0.6;
+}
+
+.upload-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.upload-primary {
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+  margin: 0;
+}
+
+.upload-secondary {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.upload-link {
+  color: #6366f1;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.upload-link:hover {
+  color: #4f46e5;
+}
+
+.file-preview {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #f9fafb;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-icon {
+  font-size: 24px;
+  opacity: 0.8;
+}
+
+.file-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.file-name {
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.file-size {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.file-remove {
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.file-remove:hover {
+  background: #dc2626;
+}
+
+.optional-text {
+  font-weight: normal;
+  color: #6b7280;
+  font-size: 14px;
+  margin-left: 4px;
+}
+
+/* Responsive adjustments for file upload */
+@media (max-width: 640px) {
+  .file-upload-zone {
+    padding: 16px;
+  }
+  
+  .upload-icon {
+    font-size: 36px;
+  }
+  
+  .upload-primary {
+    font-size: 14px;
+  }
+  
+  .upload-secondary {
+    font-size: 12px;
+  }
+  
+  .file-info {
+    gap: 8px;
+  }
+  
+  .file-name {
+    font-size: 13px;
+  }
+}
+/* Animation Classes */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-card {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.tips-card {
+  animation: fadeInUp 0.5s ease-out 0.2s both;
+}
+
+/* Focus Management */
+.field-input:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.primary-button:focus-visible,
+.secondary-button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Loading States */
+.primary-button:disabled .button-icon {
+  display: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .field-input {
+    border-width: 3px;
+  }
+  
+  .primary-button,
+  .secondary-button {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .field-input,
+  .primary-button,
+  .secondary-button,
+  .tip-item,
+  .progress-fill {
+    transition: none;
+  }
+  
+  .form-card,
+  .tips-card {
+    animation: none;
+  }
+  
+  .progress-fill::after {
+    animation: none;
+  }
+}

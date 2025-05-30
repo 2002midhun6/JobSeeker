@@ -1,8 +1,8 @@
 // src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes ,Navigate} from 'react-router-dom';
-import SignUp from './pages/signup';
-import UserLogin from './pages/login';
+import SignUp from './pages/Signup';
+import UserLogin from './pages/Login';
 import VerifyOTP from './pages/VerifyOtp';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './ProtectedRoute/ProtectedRoute';

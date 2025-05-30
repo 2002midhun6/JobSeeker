@@ -1,8 +1,50 @@
-import React, { useState, useEffect,useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 import { AuthContext } from '../../context/AuthContext';
+const baseUrl = import.meta.env.VITE_API_URL;
+// Spinner Component (copied from ProfessionalDashBoardContent.jsx)
+const Spinner = ({ size = 'medium', text = 'Loading...' }) => {
+  const spinnerStyles = {
+    container: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+    },
+    spinner: {
+      width: size === 'small' ? '20px' : size === 'large' ? '60px' : '40px',
+      height: size === 'small' ? '20px' : size === 'large' ? '60px' : '40px',
+      border: `${size === 'small' ? '2px' : '3px'} solid #f3f3f3`,
+      borderTop: `${size === 'small' ? '2px' : '3px'} solid #007bff`,
+      borderRadius: '50%',
+      animation: 'spin 1s linear infinite',
+      marginBottom: '10px',
+    },
+    text: {
+      color: '#666',
+      fontSize: size === 'small' ? '12px' : size === 'large' ? '16px' : '14px',
+      fontWeight: '500',
+    }
+  };
+
+  return (
+    <div style={spinnerStyles.container}>
+      <div style={spinnerStyles.spinner}></div>
+      <span style={spinnerStyles.text}>{text}</span>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+    </div>
+  );
+};
 
 function Login() {
   const { dispatch } = useContext(AuthContext);
@@ -15,6 +57,7 @@ function Login() {
   const [isResendLoading, setIsResendLoading] = useState(false);
   const [isResendDisabled, setIsResendDisabled] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [loading, setLoading] = useState(false); // New loading state
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -27,10 +70,11 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Start spinner
     try {
       setError('');
       setMessage('');
-      const response = await axios.post('http://localhost:8000/api/login/', formData, {
+      const response = await axios.post(`${baseUrl}/api/login/`, formData, {
         withCredentials: true,
       });
 
@@ -48,30 +92,36 @@ function Login() {
       setError('');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
+    } finally {
+      setLoading(false); // Stop spinner
     }
   };
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
+    setLoading(true); // Start spinner
     try {
       setError('');
       setMessage('');
-      const response = await axios.post('http://localhost:8000/api/forgot-password/', {
+      const response = await axios.post(`${baseUrl}/api/forgot-password/`, {
         email: resetData.email,
       });
       setMessage(response.data.message);
       setOtpSent(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to send OTP');
+    } finally {
+      setLoading(false); // Stop spinner
     }
   };
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
+    setLoading(true); // Start spinner
     try {
       setError('');
       setMessage('');
-      const response = await axios.post('http://localhost:8000/api/reset-password/', resetData);
+      const response = await axios.post(`${baseUrl}/api/reset-password/`, resetData);
       setMessage(response.data.message);
       setTimeout(() => {
         setForgotPassword(false);
@@ -81,16 +131,18 @@ function Login() {
       }, 3000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to reset password');
+    } finally {
+      setLoading(false); // Stop spinner
     }
   };
 
   const handleResendOTP = async () => {
     if (isResendDisabled || isResendLoading || !resetData.email) return;
+    setIsResendLoading(true); // Start resend spinner
     try {
       setError('');
       setMessage('');
-      setIsResendLoading(true);
-      const response = await axios.post('http://localhost:8000/api/resend-otp/', {
+      const response = await axios.post(`${baseUrl}/api/resend-otp/`, {
         email: resetData.email,
       });
       setMessage(response.data.message);
@@ -99,7 +151,7 @@ function Login() {
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to resend OTP');
     } finally {
-      setIsResendLoading(false);
+      setIsResendLoading(false); // Stop resend spinner
     }
   };
 
@@ -124,6 +176,11 @@ function Login() {
         <h2 className="login-title">Welcome Back</h2>
         {error && <div className="error-message">{error}</div>}
         {message && <div className="success-message">{message}</div>}
+        {loading && (
+          <div style={{ margin: '20px 0' }}>
+            <Spinner size="medium" text="Processing..." />
+          </div>
+        )}
 
         {!forgotPassword ? (
           <>
@@ -138,6 +195,7 @@ function Login() {
                   onChange={handleChange}
                   placeholder="Enter your email"
                   required
+                  disabled={loading} // Disable input during loading
                 />
               </div>
               <div className="form-group">
@@ -150,9 +208,12 @@ function Login() {
                   onChange={handleChange}
                   placeholder="Enter your password"
                   required
+                  disabled={loading} // Disable input during loading
                 />
               </div>
-              <button type="submit" className="login-button">Sign In</button>
+              <button type="submit" className="login-button" disabled={loading}>
+                {loading ? 'Signing In...' : 'Sign In'}
+              </button>
             </form>
             <p className="forgot-password-link">
               <a href="#" onClick={() => setForgotPassword(true)}>Forgot Password?</a>
@@ -175,6 +236,7 @@ function Login() {
                   onChange={handleResetChange}
                   placeholder="Enter your email"
                   required
+                  disabled={loading} // Disable input during loading
                 />
               </div>
               {otpSent && (
@@ -189,6 +251,7 @@ function Login() {
                       onChange={handleResetChange}
                       placeholder="Enter OTP"
                       required
+                      disabled={loading} // Disable input during loading
                     />
                   </div>
                   <div className="form-group">
@@ -201,12 +264,13 @@ function Login() {
                       onChange={handleResetChange}
                       placeholder="Enter new password"
                       required
+                      disabled={loading} // Disable input during loading
                     />
                   </div>
                 </>
               )}
-              <button type="submit" className="login-button">
-                {otpSent ? 'Reset Password' : 'Send OTP'}
+              <button type="submit" className="login-button" disabled={loading}>
+                {loading ? 'Processing...' : otpSent ? 'Reset Password' : 'Send OTP'}
               </button>
             </form>
             {otpSent && (
@@ -217,7 +281,13 @@ function Login() {
                   className={`resend-link ${isResendDisabled || isResendLoading ? 'disabled' : ''}`}
                   disabled={isResendDisabled || isResendLoading || !resetData.email}
                 >
-                  {isResendLoading ? 'Resending...' : isResendDisabled ? `Resend OTP (${cooldown}s)` : 'Resend OTP'}
+                  {isResendLoading ? (
+                    <Spinner size="small" text="Resending..." />
+                  ) : isResendDisabled ? (
+                    `Resend OTP (${cooldown}s)`
+                  ) : (
+                    'Resend OTP'
+                  )}
                 </button>
               </p>
             )}

@@ -10,7 +10,7 @@ from .serializers import UserRegistrationSerializer, UserLoginSerializer, Forgot
 from .models import CustomUser,ProfessionalProfile,Job,JobApplication
 from .models import PaymentRequest, Payment
 from backend.utils import send_otp_email
-from .serializers import OTPVerificationSerializer
+from .serializers import OTPVerificationSerializer,AdminResponseSerializer
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import AccessToken
@@ -27,7 +27,7 @@ from django.conf import settings
 import logging
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
-from .serializers import UserBlockSerializer,UserSerializer,JobSerializer,JobApplicationSerializer
+from .serializers import UserBlockSerializer,UserSerializer,JobSerializer,JobApplicationSerializer,ClientFeedbackSerializer
 from django.core.mail import send_mail
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -59,42 +59,62 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from .cloudinary_utils import CloudinaryManager
+import cloudinary.uploader
 
 @csrf_exempt
 @require_http_methods(["GET"])
 def health_check(request):
     return JsonResponse({'status': 'healthy', 'service': 'backend'})
+import logging
+logger = logging.getLogger(__name__)  # Add this line at the top
+
 class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
-    
+
     def post(self, request):
         try:
-            # Get the refresh token from the cookie
             refresh_token = request.COOKIES.get('refresh_token')
+            logger.debug(f'Refresh token found: {bool(refresh_token)}')
             
             if not refresh_token:
+                logger.error('No refresh token found in cookies')
                 return Response({'error': 'Refresh token not found'}, status=status.HTTP_401_UNAUTHORIZED)
-            
-            # Validate the refresh token and get a new access token
-            refresh = RefreshToken(refresh_token)
-            access_token = refresh.access_token
-            
-            # Create response and set the new access token as a cookie
-            response = Response({'message': 'Token refreshed successfully'}, status=status.HTTP_200_OK)
-            response.set_cookie(
-                key='access_token',
-                value=str(access_token),
-                httponly=True,
-                secure=not settings.DEBUG,
-                samesite='Lax'
-            )
-            
-            return response
-            
+
+            try:
+                refresh = RefreshToken(refresh_token)
+                access_token = str(refresh.access_token)
+                
+                response_data = {
+                    'access': access_token,
+                    'success': True
+                }
+                
+                response = Response(response_data, status=status.HTTP_200_OK)
+                
+                # Set new access token cookie
+                response.set_cookie(
+                    key='access_token',
+                    value=access_token,
+                    httponly=True,
+                    secure=True,
+                    samesite='None',  # Critical for cross-origin
+                    max_age=60 * 60,  # 1 hour
+                    path='/'
+                )
+                
+                logger.info('Token refreshed successfully')
+                return response
+                
+            except TokenError as e:
+                logger.error(f'Invalid refresh token: {str(e)}')
+                return Response({'error': 'Invalid or expired refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
+                
         except Exception as e:
-            # If the refresh token is invalid or expired
-            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+            logger.error(f'Token refresh error: {str(e)}')
+            return Response({'error': 'Token refresh failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class NotificationListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
@@ -512,9 +532,6 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 class ComplaintDetailView(generics.RetrieveUpdateAPIView):
-    """
-    View for retrieving and updating a specific complaint
-    """
     serializer_class = ComplaintSerializer
     permission_classes = [IsAuthenticated]
     
@@ -528,15 +545,73 @@ class ComplaintDetailView(generics.RetrieveUpdateAPIView):
         user = request.user
         complaint = self.get_object()
         
-        # Only staff/admin can update status
-        if 'status' in request.data and not (user.is_superuser or user.is_staff):
-            return Response(
-                {'error': 'Only admins can update complaint status'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        if 'status' in request.data:
+            if user.is_superuser or user.is_staff:
+                allowed_statuses = ['PENDING', 'IN_PROGRESS', 'CLOSED']
+                if request.data['status'] not in allowed_statuses:
+                    return Response(
+                        {'error': 'Admins cannot directly mark complaints as resolved'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            else:
+                # Regular users can mark as resolved OR request further action
+                if request.data['status'] == 'RESOLVED':
+                    if (complaint.status == 'AWAITING_USER_RESPONSE' and complaint.admin_response):
+                        pass  # Allowed
+                    else:
+                        return Response(
+                            {'error': 'You can only mark complaints as resolved after admin response'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                elif request.data['status'] == 'NEEDS_FURTHER_ACTION':
+                    if (complaint.status == 'AWAITING_USER_RESPONSE' and complaint.admin_response):
+                        pass  # Allowed
+                    else:
+                        return Response(
+                            {'error': 'You can only request further action after admin response'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                else:
+                    return Response(
+                        {'error': 'Invalid status change'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
             
         return super().patch(request, *args, **kwargs)
-
+class AdminRespondToComplaintView(generics.UpdateAPIView):
+    """
+    Admin view for responding to complaints
+    """
+    serializer_class = AdminResponseSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        permissions = super().get_permissions()
+        if not self.request.user.is_staff and not self.request.user.is_superuser:
+            return [IsAdminUser()]
+        return permissions
+    
+    def get_queryset(self):
+        return Complaint.objects.all()
+    
+    def patch(self, request, *args, **kwargs):
+        complaint = self.get_object()
+        
+        # Update the complaint with admin response
+        serializer = self.get_serializer(complaint, data=request.data, partial=True)
+        if serializer.is_valid():
+            # Set additional fields when admin responds
+            serializer.save(
+                responded_by=request.user,
+                response_date=timezone.now(),
+                status='AWAITING_USER_RESPONSE'  # Change status to await user response
+            )
+            
+            # Return full complaint data
+            full_serializer = ComplaintSerializer(complaint, context={'request': request})
+            return Response(full_serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class AdminComplaintListView(generics.ListAPIView):
     """
     Admin view for listing all complaints with filtering options
@@ -567,6 +642,39 @@ class AdminComplaintListView(generics.ListAPIView):
             )
             
         return queryset
+class ClientFeedbackView(generics.UpdateAPIView):
+    """
+    View for clients to provide feedback on admin response
+    """
+    serializer_class = ClientFeedbackSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Complaint.objects.filter(user=self.request.user)
+    
+    def patch(self, request, *args, **kwargs):
+        complaint = self.get_object()
+        
+        # Can only provide feedback if admin has responded
+        if complaint.status != 'AWAITING_USER_RESPONSE' or not complaint.admin_response:
+            return Response(
+                {'error': 'You can only provide feedback after admin response'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = self.get_serializer(complaint, data=request.data, partial=True)
+        if serializer.is_valid():
+            # Set additional fields and change status
+            serializer.save(
+                feedback_date=timezone.now(),
+                status='NEEDS_FURTHER_ACTION'
+            )
+            
+            # Return full complaint data
+            full_serializer = ComplaintSerializer(complaint, context={'request': request})
+            return Response(full_serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class ClientPendingPaymentsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -635,6 +743,10 @@ class RequestVerificationView(APIView):
             return Response({'message': 'Verification request sent to admin'}, status=status.HTTP_200_OK)
         except ProfessionalProfile.DoesNotExist:
             return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+# accounts/views.py - Update your ClientProjectsView
+
+from django.db.models import Count
+
 class ClientProjectsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -643,10 +755,27 @@ class ClientProjectsView(APIView):
         if user.role != 'client':
             return Response({'error': 'Only clients can view their projects'}, status=status.HTTP_403_FORBIDDEN)
 
-        # Categorize jobs by status
-        pending_jobs = Job.objects.filter(client_id=user, status='Open')
-        active_jobs = Job.objects.filter(client_id=user, status='Assigned')
-        completed_jobs = Job.objects.filter(client_id=user, status='Completed')
+        # Categorize jobs by status and annotate with application count
+        pending_jobs = Job.objects.filter(
+            client_id=user, 
+            status='Open'
+        ).annotate(
+            applicants_count=Count('applications')
+        )
+        
+        active_jobs = Job.objects.filter(
+            client_id=user, 
+            status='Assigned'
+        ).annotate(
+            applicants_count=Count('applications')
+        )
+        
+        completed_jobs = Job.objects.filter(
+            client_id=user, 
+            status='Completed'
+        ).annotate(
+            applicants_count=Count('applications')
+        )
 
         # Serialize each category
         pending_serializer = JobSerializer(pending_jobs, many=True)
@@ -684,30 +813,34 @@ class BlockUnblockUserView(APIView):
 
 
 class CheckAuthView(APIView):
+    permission_classes = [AllowAny]
+    
     def get(self, request):
         try:
-            auth = JWTAuthentication()
-            token = request.COOKIES.get('access_token')  # Read token from cookies
-
-            if not token:
-                return Response({'isAuthenticated': False}, status=status.HTTP_401_UNAUTHORIZED)
-
-            validated_token = auth.get_validated_token(token)
-            user = auth.get_user(validated_token)
-
+            access_token = request.COOKIES.get('access_token')
+            if not access_token:
+                return Response({'isAuthenticated': False})
+            
+            from rest_framework_simplejwt.tokens import AccessToken
+            token = AccessToken(access_token)
+            user_id = token.get('user_id')
+            
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+            
             return Response({
+                'isAuthenticated': True,
                 'user': {
-                    'id':user.id,
+                    'id': user.id,
                     'email': user.email,
                     'name': user.name,
                     'role': user.role,
-                    'is_staff': user.is_staff,
-                },
-                'isAuthenticated': True
-            }, status=status.HTTP_200_OK)
-
-        except (InvalidToken, TokenError):
-            return Response({'isAuthenticated': False}, status=status.HTTP_401_UNAUTHORIZED)
+                    'is_staff': user.is_staff
+                }
+            })
+        except:
+            return Response({'isAuthenticated': False})
 class RegisterView(APIView):
     permission_classes = [AllowAny]  # Optional, depending on your requirements
     authentication_classes = []
@@ -747,51 +880,81 @@ class RegisterView(APIView):
         # return response
 
 class LoginView(APIView):
-    permission_classes = [AllowAny]  # Optional, depending on your requirements
+    permission_classes = [AllowAny]
     authentication_classes = []
+
     def post(self, request):
-        serializer = UserLoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            logger.info(f'Login attempt for: {request.data.get("email", "no email")}')
+            
+            serializer = UserLoginSerializer(data=request.data)
+            if not serializer.is_valid():
+                logger.warning(f'Login validation failed: {serializer.errors}')
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user = authenticate(email=serializer.validated_data['email'], password=serializer.validated_data['password'])
-        if not user:
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-        if user.is_blocked:
-            return Response({'error': 'Blocked account'}, status=status.HTTP_401_UNAUTHORIZED)
-        if not user.is_verified and not user.is_superuser:
-            return Response({'error': 'Please verify your email before logging in.'}, status=status.HTTP_401_UNAUTHORIZED)
-        
-      
-        # In your LoginView.post method
-        refresh = RefreshToken.for_user(user)
-        response = Response({
-            'user': {
-                'id': user.id,
-                'email': user.email,
-                'name': user.name,
-                'role': user.role,
-                'is_staff': user.is_staff
+            user = authenticate(
+                email=serializer.validated_data['email'], 
+                password=serializer.validated_data['password']
+            )
+            
+            if not user:
+                logger.warning(f'Failed login attempt for email: {serializer.validated_data["email"]}')
+                return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            if user.is_blocked:
+                logger.warning(f'Blocked account login attempt: {user.email}')
+                return Response({'error': 'Account is blocked'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            if not user.is_verified and not user.is_superuser:
+                logger.warning(f'Unverified account login attempt: {user.email}')
+                return Response({'error': 'Please verify your email before logging in'}, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Generate tokens
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            
+            response_data = {
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'name': user.name,
+                    'role': user.role,
+                    'is_staff': user.is_staff
+                },
+                'access': access_token,
+                'success': True
             }
-        }, status=status.HTTP_200_OK)
+            
+            response = Response(response_data, status=status.HTTP_200_OK)
 
-        # Set the cookies with appropriate expiration
-        response.set_cookie(
-            key='access_token',
-            value=str(refresh.access_token),
-            httponly=True,
-            secure=not settings.DEBUG,
-            samesite='Lax',
-            max_age=60 * 30  # 30 minutes
-        )
-        response.set_cookie(
-            key='refresh_token',
-            value=str(refresh),
-            httponly=True,
-            secure=not settings.DEBUG,
-            samesite='Lax',
-            max_age=60 * 60 * 24 * 7  # 7 days
-        )
-        return response
+            # Set cookies with proper settings for cross-origin
+            response.set_cookie(
+                key='access_token',
+                value=access_token,
+                httponly=True,
+                secure=True,
+                samesite='None',  # Critical for cross-origin
+                max_age=60 * 60,  # 1 hour
+                path='/'
+            )
+            
+            response.set_cookie(
+                key='refresh_token',
+                value=str(refresh),
+                httponly=True,
+                secure=True,
+                samesite='None',  # Critical for cross-origin
+                max_age=60 * 60 * 24 * 7,  # 7 days
+                path='/'
+            )
+            
+            logger.info(f'User {user.email} logged in successfully')
+            return response
+            
+        except Exception as e:
+            logger.error(f'Login error: {str(e)}')
+            return Response({'error': 'Login failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class LogoutView(APIView):
     permission_classes = [AllowAny]  # Optional, depending on your requirements
@@ -874,6 +1037,7 @@ class ProfessionalProfileView(APIView):
     def post(self, request):
         """Create a professional profile for the authenticated user"""
         print('POST /api/profile/ - Data:', request.data)
+        print('POST /api/profile/ - Files:', request.FILES)
        
         user = request.user
         
@@ -889,24 +1053,63 @@ class ProfessionalProfileView(APIView):
         if ProfessionalProfile.objects.filter(user=user).exists():
             return Response({'error': 'Profile already exists'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Handle file upload
-        data = request.data.copy()
-        if 'verify_doc' in request.FILES:
-            data['verify_doc'] = request.FILES['verify_doc']
+        # Handle file upload validation first
+        verify_doc = request.FILES.get('verify_doc')
+        if verify_doc:
+            validation_result = CloudinaryManager.validate_file_upload(
+                verify_doc,
+                max_size_mb=10,
+                allowed_formats=['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
+            )
+            
+            if not validation_result['valid']:
+                return Response({'verify_doc': [validation_result['error']]}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Deserialize and save the profile
+        # Prepare data for serializer
+        data = request.data.copy()
+        
+        # Deserialize and validate the profile
         serializer = ProfessionalProfileSerializer(data=data)
         if serializer.is_valid():
-            serializer.save(user=user)
-            return Response({'message': 'Profile created successfully'}, status=status.HTTP_201_CREATED)
+            try:
+                # Save profile first
+                profile = serializer.save(user=user)
+                
+                # Handle Cloudinary upload if file exists
+                if verify_doc:
+                    upload_result = CloudinaryManager.upload_verification_document(
+                        verify_doc,
+                        user.id,
+                        verify_doc.name
+                    )
+                    
+                    if upload_result['success']:
+                        # Update profile with Cloudinary URL
+                        profile.verify_doc = upload_result['url']
+                        profile.save()
+                        print(f"Successfully uploaded verification doc: {upload_result['url']}")
+                    else:
+                        # If upload fails, delete the profile and return error
+                        profile.delete()
+                        return Response(
+                            {'error': f"File upload failed: {upload_result['error']}"}, 
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        )
+                
+                return Response({'message': 'Profile created successfully'}, status=status.HTTP_201_CREATED)
+                
+            except Exception as e:
+                print(f'Profile creation error: {str(e)}')
+                return Response({'error': 'Profile creation failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # Debugging serializer errors
         print('Serializer errors:', serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
+        """Update professional profile"""
         print('PATCH /api/profile/ - Data:', request.data)
-        print('PATCH /api/profile/ - Files:', request.FILES)  # Add this to debug file uploads
+        print('PATCH /api/profile/ - Files:', request.FILES)
         user = request.user
 
         if not user.is_authenticated:
@@ -918,38 +1121,338 @@ class ProfessionalProfileView(APIView):
         try:
             profile = ProfessionalProfile.objects.get(user=user)
             
-            # Handle file upload
+            # Handle file upload validation if new file is provided
+            verify_doc = request.FILES.get('verify_doc')
+            if verify_doc:
+                validation_result = CloudinaryManager.validate_file_upload(
+                    verify_doc,
+                    max_size_mb=10,
+                    allowed_formats=['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
+                )
+                
+                if not validation_result['valid']:
+                    return Response({'verify_doc': [validation_result['error']]}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Prepare data for serializer
             data = request.data.copy()
-            if 'verify_doc' in request.FILES:
-                data['verify_doc'] = request.FILES['verify_doc']
             
             serializer = ProfessionalProfileSerializer(profile, data=data, partial=True)
             if serializer.is_valid():
-                serializer.save()
-                return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
+                try:
+                    # Save profile updates
+                    updated_profile = serializer.save()
+                    
+                    # Handle Cloudinary upload if new file exists
+                    if verify_doc:
+                        upload_result = CloudinaryManager.upload_verification_document(
+                            verify_doc,
+                            user.id,
+                            verify_doc.name
+                        )
+                        
+                        if upload_result['success']:
+                            # Update profile with new Cloudinary URL
+                            updated_profile.verify_doc = upload_result['url']
+                            updated_profile.save()
+                            print(f"Successfully updated verification doc: {upload_result['url']}")
+                        else:
+                            return Response(
+                                {'error': f"File upload failed: {upload_result['error']}"}, 
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                            )
+                    
+                    return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
+                    
+                except Exception as e:
+                    print(f'Profile update error: {str(e)}')
+                    return Response({'error': 'Profile update failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
            
             print('Serializer errors:', serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
         except ProfessionalProfile.DoesNotExist:
             return Response({'error': 'Profile not found. Please create a profile first.'}, status=status.HTTP_404_NOT_FOUND)
+
+
 class JobCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        print(f"JobCreateView: Received request from {request.user.email}")
+        print(f"Request data keys: {list(request.data.keys())}")
+        print(f"Request files: {list(request.FILES.keys())}")
+        
         if request.user.role != 'client':
             return Response(
                 {'error': 'Only clients can post jobs'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        serializer = JobSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(client_id=request.user)  # Associate job with authenticated user
+        try:
+            # Handle file upload validation first
+            attachment = request.FILES.get('attachment')
+            if attachment:
+                print(f"File: {attachment.name}, size: {attachment.size}, type: {attachment.content_type}")
+                
+                # Validate file
+                max_size = 25 * 1024 * 1024  # 25MB
+                allowed_types = [
+                    'application/pdf', 'application/msword', 
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-excel', 
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'application/vnd.ms-powerpoint', 
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'image/jpeg', 'image/jpg', 'image/png', 'image/gif',
+                    'application/zip', 'application/x-rar-compressed', 'text/plain'
+                ]
+
+                if attachment.size > max_size:
+                    return Response({'attachment': ['File size must be less than 25MB']}, status=status.HTTP_400_BAD_REQUEST)
+
+                if attachment.content_type not in allowed_types:
+                    return Response({'attachment': ['File type not supported']}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Prepare data for serializer (exclude file)
+            data = {key: value for key, value in request.data.items() if key != 'attachment'}
+            print(f"Serializer data: {data}")
+
+            # Create serializer and validate
+            serializer = JobSerializer(data=data)
+            if not serializer.is_valid():
+                print(f"Serializer errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                # Save job first WITHOUT the file
+                job = serializer.save(client_id=request.user)
+                print(f"Job created successfully: {job.job_id}")
+                
+                # Handle Cloudinary upload if file exists
+                if attachment:
+                    print("Starting Cloudinary upload...")
+                    
+                    try:
+                        import cloudinary.uploader
+                        
+                        # Upload to Cloudinary
+                        result = cloudinary.uploader.upload(
+                            attachment,
+                            folder="job_attachments",
+                            public_id=f"job_{job.job_id}_client_{request.user.id}_{attachment.name}",
+                            resource_type="raw",
+                            overwrite=True,
+                            tags=["job_attachment", f"job_{job.job_id}", f"client_{request.user.id}"]
+                        )
+                        
+                        print(f"Cloudinary upload successful: {result.get('secure_url')}")
+                        
+                        # IMPORTANT: Store the public_id, not the URL
+                        # CloudinaryField expects the public_id to generate URLs
+                        job.attachment = result['public_id']
+                        job.save()
+                        print(f"Job updated with attachment public_id: {result['public_id']}")
+                        
+                    except Exception as upload_error:
+                        print(f"Cloudinary upload failed: {str(upload_error)}")
+                        import traceback
+                        traceback.print_exc()
+                        
+                        # Delete job if upload fails
+                        job.delete()
+                        return Response(
+                            {'error': f'File upload failed: {str(upload_error)}'}, 
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        )
+                
+                # Return the successful job data
+                response_serializer = JobSerializer(job)
+                return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+                
+            except Exception as save_error:
+                print(f"Job save error: {str(save_error)}")
+                import traceback
+                traceback.print_exc()
+                return Response(
+                    {'error': f'Failed to create job: {str(save_error)}'}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        
+        except Exception as general_error:
+            print(f"General error in JobCreateView: {str(general_error)}")
+            import traceback
+            traceback.print_exc()
             return Response(
-                serializer.data,
-                status=status.HTTP_201_CREATED
+                {'error': f'Job creation failed: {str(general_error)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Update the JobDetailView class (for PUT method)
+class JobDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, job_id):
+        if request.user.role != 'client':
+            return Response(
+                {'error': 'Only clients can view job details'},
+                status=status.HTTP_403_FORBIDDEN
             )
+
+        job = get_object_or_404(Job, job_id=job_id, client_id=request.user)
+        serializer = JobSerializer(job)
+        return Response(serializer.data)
+
+    def put(self, request, job_id):
+        if request.user.role != 'client':
+            return Response(
+                {'error': 'Only clients can edit jobs'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        job = get_object_or_404(Job, job_id=job_id, client_id=request.user)
+        if job.status != 'Open':
+            return Response(
+                {'error': 'Only open projects can be edited'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if job.applications.exists():
+            return Response(
+                {'error': 'Cannot edit jobs with applicants'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Handle file upload validation if new file is provided
+        attachment = request.FILES.get('attachment')
+        if attachment:
+            validation_result = CloudinaryManager.validate_file_upload(
+                attachment,
+                max_size_mb=25,
+                allowed_formats=['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar', 'txt']
+            )
+            
+            if not validation_result['valid']:
+                return Response({'attachment': [validation_result['error']]}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = JobSerializer(job, data=request.data, partial=True)
+        if serializer.is_valid():
+            try:
+                # Save job updates
+                updated_job = serializer.save()
+                
+                # Handle Cloudinary upload if new file exists
+                if attachment:
+                    upload_result = CloudinaryManager.upload_job_attachment(
+                        attachment,
+                        job.job_id,
+                        request.user.id,
+                        attachment.name
+                    )
+                    
+                    if upload_result['success']:
+                        # Update job with new Cloudinary URL
+                        updated_job.attachment = upload_result['url']
+                        updated_job.save()
+                        print(f"Successfully updated job attachment: {upload_result['url']}")
+                    else:
+                        return Response(
+                            {'error': f"File upload failed: {upload_result['error']}"}, 
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        )
+                
+                return Response(
+                    {'message': 'Project updated successfully'},
+                    status=status.HTTP_200_OK
+                )
+                
+            except Exception as e:
+                print(f'Job update error: {str(e)}')
+                return Response({'error': 'Job update failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, job_id):
+        """Delete a job (only if no applications exist)"""
+        print(f"DELETE request received for job_id: {job_id}")
+        
+        if request.user.role != 'client':
+            return Response(
+                {'error': 'Only clients can delete jobs'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            job = Job.objects.get(job_id=job_id, client_id=request.user)
+            print(f"Job found: {job.title}")
+        except Job.DoesNotExist:
+            return Response(
+                {'error': 'Job not found or you are not authorized to delete it'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if job is in a deletable state
+        if job.status != 'Open':
+            return Response(
+                {'error': 'Only open projects can be deleted'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if there are any applications
+        if job.applications.exists():
+            return Response(
+                {'error': 'Cannot delete jobs with existing applications'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if there are any payments associated with this job
+        job_applications = JobApplication.objects.filter(job_id=job)
+        if Payment.objects.filter(job_application__in=job_applications).exists():
+            return Response(
+                {'error': 'Cannot delete jobs with existing payments'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Delete file from Cloudinary if exists
+            if job.attachment:
+                try:
+                    # Extract public_id from Cloudinary URL and delete
+                    # This is a simplified approach - you might want to store public_id separately
+                    public_id = f"job_attachments/job_{job.job_id}_client_{request.user.id}"
+                    CloudinaryManager.delete_file(public_id, resource_type='raw')
+                    print(f"Deleted job attachment from Cloudinary: {public_id}")
+                except Exception as e:
+                    print(f"Failed to delete attachment from Cloudinary: {str(e)}")
+                    # Continue with job deletion even if Cloudinary deletion fails
+
+            # Delete any associated conversations
+            try:
+                conversation = Conversation.objects.get(job=job)
+                Message.objects.filter(conversation=conversation).delete()
+                conversation.delete()
+                print(f"Deleted conversation for job {job_id}")
+            except Conversation.DoesNotExist:
+                print(f"No conversation found for job {job_id}")
+                pass
+
+            # Delete the job
+            job_title = job.title
+            job.delete()
+            print(f"Successfully deleted job: {job_title}")
+
+            return Response(
+                {
+                    'message': f'Project "{job_title}" has been successfully deleted',
+                    'deleted_job_id': job_id
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            print(f"Error deleting job: {str(e)}")
+            return Response(
+                {'error': f'Failed to delete project: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 class OpenJobsListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1043,47 +1546,6 @@ class ApplyToJobView(generics.CreateAPIView):
         except Exception as e:
             print(f"Failed to send WebSocket notification: {str(e)}")
 
-class JobDetailView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, job_id):
-        if request.user.role != 'client':
-            return Response(
-                {'error': 'Only clients can view job details'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        job = get_object_or_404(Job, job_id=job_id, client_id=request.user)
-        serializer = JobSerializer(job)
-        return Response(serializer.data)
-
-    def put(self, request, job_id):
-        if request.user.role != 'client':
-            return Response(
-                {'error': 'Only clients can edit jobs'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        job = get_object_or_404(Job, job_id=job_id, client_id=request.user)
-        if job.status != 'Open':
-            return Response(
-                {'error': 'Only open projects can be edited'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        if job.applications.exists():
-            return Response(
-                {'error': 'Cannot edit jobs with applicants'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        serializer = JobSerializer(job, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {'message': 'Project updated successfully'},
-                status=status.HTTP_200_OK
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class JobApplicationsListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1400,7 +1862,52 @@ class ProfessionalJobApplicationsView(APIView):
                     client=job.client_id,
                     status='pending'
                 )
-
+                notification_data = {
+                    'job_id': job.job_id,
+                    'job_title': job.title,
+                    'professional_id': application.professional_id.id,
+                    'professional_name': application.professional_id.name,
+                    'remaining_amount': str(remaining_amount),
+                    'application_id': application.application_id
+                }
+                
+                # Create persistent notification for client
+                Notification.objects.create(
+                    user=job.client_id,  # Notify the CLIENT
+                    notification_type='project_completion',
+                    title=f'Project completed: {job.title}',
+                    message=f'{application.professional_id.name} has completed your project and requests remaining payment of ${remaining_amount}',
+                    data=notification_data
+                )
+                
+                # Send real-time WebSocket notification to client
+                channel_layer = get_channel_layer()
+                ws_notification_data = {
+                    'type': 'project_completion',
+                    'job_id': job.job_id,
+                    'job_title': job.title,
+                    'professional_id': application.professional_id.id,
+                    'professional_name': application.professional_id.name,
+                    'remaining_amount': str(remaining_amount),
+                    'timestamp': timezone.now().isoformat(),
+                    'payment_url': f'/client-pending-payments',  # URL to payment page
+                }
+                
+                # Send to client's notification group
+                async_to_sync(channel_layer.group_send)(
+                    f'notifications_{job.client_id.id}',
+                    {
+                        'type': 'send_notification',
+                        'content': ws_notification_data
+                    }
+                )
+                # Add email notification to client
+                send_mail(
+                    subject=f'Project Completed: {job.title}',
+                    message=f'Your project "{job.title}" has been completed by {application.professional_id.name}. Please complete the remaining payment of ${remaining_amount}.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[job.client_id.email],
+                )
                 # Log for debugging
                 print(f"Created PaymentRequest: ID={payment_request.request_id}, PaymentID={payment.id}, Client={job.client_id.email}")
 

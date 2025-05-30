@@ -1,6 +1,7 @@
 # Create your models here.
 # accounts/models.py
-
+from cloudinary import CloudinaryImage
+import cloudinary.utils
 import random
 import uuid
 from django.db import models
@@ -9,7 +10,19 @@ from django.utils.timezone import now
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 # Add this to your existing models.py file
+from cloudinary_storage.storage import VideoMediaCloudinaryStorage, RawMediaCloudinaryStorage
+from cloudinary.models import CloudinaryField
+class DocumentCloudinaryStorage(RawMediaCloudinaryStorage):
+    """Custom storage for documents like PDFs, DOCs"""
+    def __init__(self):
+        super().__init__()
+        self.folder = 'documents'
 
+class ImageCloudinaryStorage(VideoMediaCloudinaryStorage):
+    """Custom storage for images"""
+    def __init__(self):
+        super().__init__()
+        self.folder = 'images'
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
         ('job_application', 'Job Application'),
@@ -112,7 +125,15 @@ class ProfessionalProfile(models.Model):
     experience_years = models.PositiveIntegerField(default=0)
     availability_status = models.CharField(max_length=15, choices=AVAILABILITY_CHOICES, default='Available')
     portfolio_links = models.JSONField(default=list, blank=True)
-    verify_doc = models.FileField(upload_to='verification_docs/', blank=True, null=True)
+    verify_doc = CloudinaryField(
+        'verification_document',
+        folder='verification_docs',
+        resource_type='raw',  # Allows any file type (PDF, DOC, etc.)
+        blank=True,
+        null=True,
+        help_text="Upload verification document (PDF, DOC, etc.)"
+    )
+    
     verify_status = models.CharField(max_length=15, choices=VERIFY_STATUS_CHOICES, default='Pending')
     avg_rating = models.FloatField(default=0.0)
     denial_reason = models.TextField(blank=True, null=True) 
@@ -134,7 +155,21 @@ class ProfessionalProfile(models.Model):
             self.avg_rating = 0.0
             self.save()
             print(f"Debug: No rated jobs, avg_rating set to {self.avg_rating} for {self.user.email}")  # Debug
-
+    def get_verify_doc_url(self):
+        """Get the full Cloudinary URL for verification document"""
+        if self.verify_doc:
+            try:
+                if str(self.verify_doc).startswith('http'):
+                    return str(self.verify_doc)
+                
+                if hasattr(self.verify_doc, 'url'):
+                    return self.verify_doc.url
+                else:
+                    return CloudinaryImage(str(self.verify_doc)).build_url()
+            except Exception as e:
+                print(f"Error generating verify_doc URL: {e}")
+                return None
+        return None
     def __str__(self):
         return f"{self.user.name}'s Professional Profile"
 class Job(models.Model):
@@ -160,6 +195,14 @@ class Job(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     budget = models.DecimalField(max_digits=10, decimal_places=2)
+    attachment = CloudinaryField(
+        'job_attachment',
+        folder='job_attachments',
+        resource_type='raw',  # Allows any file type
+        null=True,
+        blank=True,
+        help_text="Upload project requirements or reference documents"
+    )
     deadline = models.DateField()
     status = models.CharField(
         max_length=10,
@@ -177,7 +220,40 @@ class Job(models.Model):
 
     def __str__(self):
         return self.title
-
+    def get_attachment_url(self):
+        """Get the full Cloudinary URL for job attachment"""
+        if self.attachment:
+            try:
+                # If it's already a full URL, return as is
+                if str(self.attachment).startswith('http'):
+                    return str(self.attachment)
+                
+                # If it's a public_id, generate URL
+                if hasattr(self.attachment, 'url'):
+                    return self.attachment.url
+                else:
+                    # Generate URL from public_id
+                    return CloudinaryImage(str(self.attachment)).build_url()
+            except Exception as e:
+                print(f"Error generating attachment URL: {e}")
+                return None
+        return None
+    
+    def get_attachment_download_url(self):
+        """Get download URL with proper headers"""
+        if self.attachment:
+            try:
+                if str(self.attachment).startswith('http'):
+                    return str(self.attachment)
+                
+                # Generate URL with download flag
+                return CloudinaryImage(str(self.attachment)).build_url(
+                    flags="attachment"
+                )
+            except Exception as e:
+                print(f"Error generating download URL: {e}")
+                return None
+        return None
 # accounts/models.py
 # accounts/models.py
 class JobApplication(models.Model):
@@ -185,8 +261,8 @@ class JobApplication(models.Model):
         ('Applied', 'Applied'),
         ('Accepted', 'Accepted'),
         ('Rejected', 'Rejected'),
-        ('Completed', 'Completed'),  # Added
-        ('Cancelled', 'Cancelled'),  # Added
+        ('Completed', 'Completed'), 
+        ('Cancelled', 'Cancelled'), 
     ]
 
     application_id = models.AutoField(primary_key=True)
@@ -265,13 +341,31 @@ class Complaint(models.Model):
     STATUS_CHOICES = (
         ('PENDING', 'Pending'),
         ('IN_PROGRESS', 'In Progress'),
+         ('AWAITING_USER_RESPONSE', 'Awaiting User Response'), 
         ('RESOLVED', 'Resolved'),
+         ('NEEDS_FURTHER_ACTION', 'Needs Further Action'),
         ('CLOSED', 'Closed'),
     )
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='complaints')
     description = models.TextField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    admin_response = models.TextField(blank=True, null=True)  # New field for admin response
+    responded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='responded_complaints'
+    )  # Track which admin responded
+    response_date = models.DateTimeField(null=True, blank=True) 
+    client_feedback = models.TextField(blank=True, null=True)  # Why response wasn't helpful
+    feedback_date = models.DateTimeField(null=True, blank=True)
+    resolution_rating = models.IntegerField(
+        null=True, 
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )  
+    status = models.CharField(max_length=100, choices=STATUS_CHOICES, default='PENDING')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

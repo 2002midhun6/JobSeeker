@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import './IncomingCallDialog.css';
-
+const baseUrl = import.meta.env.VITE_API_URL;
 function IncomingCallDialog({ caller, onAccept, onReject, isVisible }) {
   useEffect(() => {
     // Play sound when call is incoming
