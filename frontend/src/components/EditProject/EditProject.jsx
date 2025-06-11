@@ -8,7 +8,7 @@ import './EditProject.css';
 const baseUrl = import.meta.env.VITE_API_URL;
 
 // File Upload Component for Edit Project
-const FileUpload = ({ onFileSelect, selectedFile, currentAttachment, error, help }) => {
+const FileUpload = ({ onFileSelect, selectedFile, currentDocument, currentDocumentInfo, error, help }) => {
   const [dragOver, setDragOver] = useState(false);
   
   const handleDrop = (e) => {
@@ -65,24 +65,205 @@ const FileUpload = ({ onFileSelect, selectedFile, currentAttachment, error, help
       case 'gif': return '🖼️';
       case 'zip':
       case 'rar': return '📦';
+      case 'txt': return '📃';
       default: return '📎';
     }
   };
 
   const getFileNameFromUrl = (url) => {
     if (!url) return '';
-    return decodeURIComponent(url.split('/').pop());
+    
+    // If it's a Cloudinary URL, extract filename from the end
+    if (url.includes('cloudinary.com')) {
+      const parts = url.split('/');
+      const filename = parts[parts.length - 1];
+      // Remove any query parameters and decode
+      return decodeURIComponent(filename.split('?')[0]);
+    }
+    
+    // Fallback: extract from any URL
+    return decodeURIComponent(url.split('/').pop().split('?')[0]);
   };
 
-  const getFullAttachmentUrl = (url) => {
-    if (!url) return '';
-    // If URL already starts with http, return as is
-    if (url.startsWith('http')) return url;
-    // Otherwise, prepend base URL
-    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+  const getFileTypeCategory = (fileName) => {
+    const extension = fileName.toLowerCase().split('.').pop();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension)) {
+      return 'image';
+    } else if (extension === 'pdf') {
+      return 'pdf';
+    } else if (['doc', 'docx'].includes(extension)) {
+      return 'document';
+    } else if (['xls', 'xlsx'].includes(extension)) {
+      return 'spreadsheet';
+    } else if (['ppt', 'pptx'].includes(extension)) {
+      return 'presentation';
+    } else if (['zip', 'rar', '7z'].includes(extension)) {
+      return 'archive';
+    } else if (extension === 'txt') {
+      return 'text';
+    }
+    return 'other';
   };
 
-  const hasFile = selectedFile || currentAttachment;
+  const getViewButtonText = (fileName) => {
+    const fileType = getFileTypeCategory(fileName);
+    switch (fileType) {
+      case 'image': return 'View Image';
+      case 'pdf': return 'View PDF';
+      case 'document': return 'Download Document';
+      case 'spreadsheet': return 'Download Spreadsheet';
+      case 'presentation': return 'Download Presentation';
+      case 'archive': return 'Download Archive';
+      case 'text': return 'View Text';
+      default: return 'Download File';
+    }
+  };
+
+  const createCloudinaryUrl = (originalUrl, transformation) => {
+    if (!originalUrl || !originalUrl.includes('cloudinary.com')) {
+      return originalUrl;
+    }
+    
+    // Split URL at /upload/
+    const urlParts = originalUrl.split('/upload/');
+    if (urlParts.length !== 2) return originalUrl;
+    
+    const baseUrl = urlParts[0] + '/upload/';
+    const pathAfterUpload = urlParts[1];
+    
+    return `${baseUrl}${transformation}/${pathAfterUpload}`;
+  };
+
+  const openFilePreview = (url, fileName, documentInfo = null) => {
+    if (!url) return;
+    
+    console.log('Opening file:', { url, fileName, documentInfo });
+    
+    // Use document info if available, otherwise detect from filename
+    const fileType = documentInfo?.file_type ? 
+      getFileTypeCategory(`dummy.${documentInfo.file_type}`) : 
+      getFileTypeCategory(fileName);
+    
+    // Create appropriate URLs for different file types
+    let viewUrl = url;
+    let downloadUrl = url;
+    
+    if (documentInfo?.view_url) {
+      viewUrl = documentInfo.view_url;
+    } else if (url.includes('cloudinary.com')) {
+      if (fileType === 'pdf') {
+        // For PDFs, use fl_inline to force browser viewing
+        viewUrl = createCloudinaryUrl(url, 'fl_inline');
+      } else if (fileType === 'image') {
+        // Images can use original URL
+        viewUrl = url;
+      } else {
+        // Other documents, try inline first
+        viewUrl = createCloudinaryUrl(url, 'fl_inline');
+      }
+    }
+    
+    if (documentInfo?.download_url) {
+      downloadUrl = documentInfo.download_url;
+    } else if (url.includes('cloudinary.com')) {
+      downloadUrl = createCloudinaryUrl(url, 'fl_attachment');
+    }
+    
+    console.log('Generated URLs:', { viewUrl, downloadUrl, fileType });
+    
+    if (fileType === 'image') {
+      // For images, open in new tab
+      window.open(viewUrl, '_blank');
+    } else if (fileType === 'pdf') {
+      // For PDFs, try to open inline view URL
+      try {
+        const pdfWindow = window.open('', '_blank');
+        if (pdfWindow) {
+          // Create a simple PDF viewer page
+          pdfWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>PDF Viewer - ${fileName}</title>
+              <style>
+                body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+                .header { background: #f5f5f5; padding: 10px; margin-bottom: 10px; }
+                .download-btn { 
+                  background: #007bff; 
+                  color: white; 
+                  padding: 8px 16px; 
+                  text-decoration: none; 
+                  border-radius: 4px; 
+                  margin-left: 10px;
+                }
+                iframe { width: 100%; height: calc(100vh - 80px); border: none; }
+                .error { color: red; margin: 20px; }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <strong>PDF: ${fileName}</strong>
+                <a href="${downloadUrl}" class="download-btn" download>Download PDF</a>
+              </div>
+              <iframe src="${viewUrl}" title="PDF Viewer" onload="this.style.display='block'" onerror="document.getElementById('error').style.display='block'">
+                <p>Your browser does not support PDFs. <a href="${downloadUrl}">Download the PDF</a>.</p>
+              </iframe>
+              <div id="error" class="error" style="display:none">
+                <p>Failed to load PDF. <a href="${downloadUrl}">Click here to download</a> instead.</p>
+              </div>
+            </body>
+            </html>
+          `);
+          pdfWindow.document.close();
+        } else {
+          // Popup blocked, fallback to download
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = fileName;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } catch (error) {
+        console.error('Error opening PDF:', error);
+        // Force download on error
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = fileName;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } else {
+      // For other files, try view first, then download
+      try {
+        const fileWindow = window.open(viewUrl, '_blank');
+        if (!fileWindow) {
+          // Fallback to download
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = fileName;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } catch (error) {
+        // Force download on error
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = fileName;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+  };
+
+  const hasFile = selectedFile || currentDocument;
 
   return (
     <div className="form-group file-upload-group">
@@ -133,27 +314,28 @@ const FileUpload = ({ onFileSelect, selectedFile, currentAttachment, error, help
                     <div className="file-status">New file selected</div>
                   </div>
                 </>
-              ) : currentAttachment ? (
+              ) : currentDocument ? (
                 <>
-                  <span className="file-icon">{getFileIcon(getFileNameFromUrl(currentAttachment))}</span>
+                  <span className="file-icon">{getFileIcon(getFileNameFromUrl(currentDocument))}</span>
                   <div className="file-details">
-                    <div className="file-name">{getFileNameFromUrl(currentAttachment)}</div>
-                    <div className="file-status">Current attachment</div>
-                    <div className="file-url-debug" style={{ fontSize: '10px', color: '#666', wordBreak: 'break-all' }}>
-                      URL: {currentAttachment}
+                    <div className="file-name">{getFileNameFromUrl(currentDocument)}</div>
+                    <div className="file-status">Current document</div>
+                    <div className="file-actions-inline">
+                      <button
+                        type="button"
+                        className="file-action-btn view-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openFilePreview(
+                            currentDocument, 
+                            getFileNameFromUrl(currentDocument),
+                            currentDocumentInfo
+                          );
+                        }}
+                      >
+                        {getViewButtonText(getFileNameFromUrl(currentDocument))}
+                      </button>
                     </div>
-                    <a 
-                      href={getFullAttachmentUrl(currentAttachment)} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="file-download-link"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('Clicking download link:', getFullAttachmentUrl(currentAttachment));
-                      }}
-                    >
-                      View/Download
-                    </a>
                   </div>
                 </>
               ) : null}
@@ -215,10 +397,11 @@ function EditProject() {
     budget: '',
     deadline: '',
     advance_payment: '',
-    attachment: null
+    document: null
   });
   const [selectedFile, setSelectedFile] = useState(null);
-  const [currentAttachment, setCurrentAttachment] = useState(null);
+  const [currentDocument, setCurrentDocument] = useState(null);
+  const [currentDocumentInfo, setCurrentDocumentInfo] = useState(null); // FIXED: Added missing state
   const [fileError, setFileError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -228,19 +411,45 @@ function EditProject() {
         const response = await axios.get(`${baseUrl}/api/jobs/${job_id}/`, {
           withCredentials: true,
         });
-        const { title, description, budget, deadline, advance_payment, attachment } = response.data;
-        console.log('Fetched attachment:', attachment); // Debug log
+        
+        const { 
+          title, 
+          description, 
+          budget, 
+          deadline, 
+          advance_payment, 
+          document,           // This is the Cloudinary field data
+          document_url,       // This is the proper Cloudinary URL
+          document_info       // This is the document metadata
+        } = response.data;
+        
+        console.log('Fetched project data:', response.data);
+        console.log('Document field:', document);
+        console.log('Document URL:', document_url);
+        console.log('Document info:', document_info);
+        
         setProject({
           title,
           description,
           budget,
           deadline: deadline ? new Date(deadline).toISOString().split('T')[0] : '',
           advance_payment: advance_payment !== null ? advance_payment : '',
-          attachment
+          document
         });
-        setCurrentAttachment(attachment);
+        
+        // Set current document URL if exists
+        if (document_url) {
+          setCurrentDocument(document_url);
+        }
+        
+        // Set document info if exists
+        if (document_info) {
+          setCurrentDocumentInfo(document_info);
+        }
+        
         setLoading(false);
       } catch (err) {
+        console.error('Error fetching project:', err);
         Swal.fire({
           icon: 'error',
           title: 'Error',
@@ -298,16 +507,20 @@ function EditProject() {
   const handleFileSelect = (file) => {
     setSelectedFile(file);
     
-    // Clear current attachment if new file is selected
+    // Clear current document if new file is selected
     if (file) {
-      setCurrentAttachment(null);
+      setCurrentDocument(null);
+      setCurrentDocumentInfo(null); // FIXED: Also clear document info
       const error = validateFile(file);
       setFileError(error);
     } else {
       setFileError('');
-      // If removing file and no current attachment, set to original attachment
-      if (!currentAttachment && project.attachment) {
-        setCurrentAttachment(project.attachment);
+      // If removing file, restore original document if it existed
+      if (project.document) {
+        // We need to re-fetch or store the original document_url
+        // For now, we'll let the user know they need to save to remove the file
+        setCurrentDocument(null);
+        setCurrentDocumentInfo(null);
       }
     }
   };
@@ -325,7 +538,8 @@ function EditProject() {
       });
       return;
     }
-    if ( parseFloat(project.advance_payment0) !== 0 &&  parseFloat(project.advance_payment) < 0) {
+    
+    if (project.advance_payment !== '' && parseFloat(project.advance_payment) < 0) {
       Swal.fire({
         icon: 'error',
         title: 'Validation Error',
@@ -334,7 +548,8 @@ function EditProject() {
       });
       return;
     }
-    if (project.advance_payment !== '' && parseFloat(project.advance_payment) < 0) {
+    
+    if (project.advance_payment !== '' && parseFloat(project.advance_payment) > parseFloat(project.budget)) {
       Swal.fire({
         icon: 'error',
         title: 'Validation Error',
@@ -343,6 +558,7 @@ function EditProject() {
       });
       return;
     }
+    
     if (new Date(project.deadline) < new Date()) {
       Swal.fire({
         icon: 'error',
@@ -365,47 +581,52 @@ function EditProject() {
     }
 
     try {
-      // Create FormData if there's a file, otherwise use regular data
-      let payload;
-      let headers = { 'Content-Type': 'application/json' };
-
-      if (selectedFile) {
-        // Use FormData for file upload
-        payload = new FormData();
-        payload.append('title', project.title);
-        payload.append('description', project.description);
-        payload.append('budget', project.budget);
-        payload.append('deadline', project.deadline);
-        if (project.advance_payment !== '') {
-          payload.append('advance_payment', project.advance_payment);
-        }
-        payload.append('attachment', selectedFile);
-        headers = { 'Content-Type': 'multipart/form-data' };
-      } else if (!selectedFile && !currentAttachment && project.attachment) {
-        // Remove attachment - send null
-        payload = { 
-          ...project,
-          attachment: null,
-          advance_payment: project.advance_payment === '' ? null : project.advance_payment
-        };
-      } else {
-        // No file changes - send regular form data
-        payload = { 
-          ...project,
-          advance_payment: project.advance_payment === '' ? null : project.advance_payment
-        };
-        // Remove attachment from payload to avoid sending file data
-        delete payload.attachment;
+      // Create FormData for file upload support
+      const formData = new FormData();
+      
+      // Add form fields
+      formData.append('title', project.title);
+      formData.append('description', project.description);
+      formData.append('budget', project.budget);
+      formData.append('deadline', project.deadline);
+      
+      if (project.advance_payment !== '') {
+        formData.append('advance_payment', project.advance_payment);
       }
+      
+      // Handle file upload/removal
+      if (selectedFile) {
+        // New file selected
+        formData.append('document', selectedFile);
+      } else if (!currentDocument && project.document) {
+        // File was removed (no current document and original had one)
+        formData.append('document', ''); // Send empty to remove
+      }
+      // If no changes to file, don't include document field
+
+      console.log('Submitting form data:', {
+        title: project.title,
+        description: project.description,
+        budget: project.budget,
+        deadline: project.deadline,
+        advance_payment: project.advance_payment,
+        hasSelectedFile: !!selectedFile,
+        hasCurrentDocument: !!currentDocument,
+        originalDocument: project.document
+      });
 
       const response = await axios.put(
         `${baseUrl}/api/jobs/${job_id}/`,
-        payload,
+        formData,
         { 
           withCredentials: true,
-          headers
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
         }
       );
+
+      console.log('Update response:', response.data);
 
       Swal.fire({
         icon: 'success',
@@ -418,6 +639,7 @@ function EditProject() {
         navigate('/client-project');
       });
     } catch (err) {
+      console.error('Update error:', err);
       const errorMsg =
         err.response?.data?.error ||
         (err.response?.data?.non_field_errors?.[0]) ||
@@ -469,9 +691,10 @@ function EditProject() {
             <FileUpload
               onFileSelect={handleFileSelect}
               selectedFile={selectedFile}
-              currentAttachment={currentAttachment}
+              currentDocument={currentDocument}
+              currentDocumentInfo={currentDocumentInfo} 
               error={fileError}
-              help="Upload project requirements, mockups, or reference documents"
+              help="Upload project requirements, mockups, or reference documents. Files are stored securely in Cloudinary."
             />
             
             <div className="form-group">

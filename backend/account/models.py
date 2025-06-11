@@ -1,7 +1,6 @@
 # Create your models here.
 # accounts/models.py
-from cloudinary import CloudinaryImage
-import cloudinary.utils
+
 import random
 import uuid
 from django.db import models
@@ -9,20 +8,9 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.timezone import now
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
-# Add this to your existing models.py file
-from cloudinary_storage.storage import VideoMediaCloudinaryStorage, RawMediaCloudinaryStorage
 from cloudinary.models import CloudinaryField
-class DocumentCloudinaryStorage(RawMediaCloudinaryStorage):
-    """Custom storage for documents like PDFs, DOCs"""
-    def __init__(self):
-        super().__init__()
-        self.folder = 'documents'
-
-class ImageCloudinaryStorage(VideoMediaCloudinaryStorage):
-    """Custom storage for images"""
-    def __init__(self):
-        super().__init__()
-        self.folder = 'images'
+# Add this to your existing models.py file
+from .storage import LocalFileStorage
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
         ('job_application', 'Job Application'),
@@ -126,18 +114,43 @@ class ProfessionalProfile(models.Model):
     availability_status = models.CharField(max_length=15, choices=AVAILABILITY_CHOICES, default='Available')
     portfolio_links = models.JSONField(default=list, blank=True)
     verify_doc = CloudinaryField(
-        'verification_document',
-        folder='verification_docs',
-        resource_type='raw',  # Allows any file type (PDF, DOC, etc.)
-        blank=True,
+        'verify_doc',
         null=True,
-        help_text="Upload verification document (PDF, DOC, etc.)"
+        blank=True,
+        resource_type='auto',  # Supports images and documents
+        folder='verification_documents/',  # Organizes files in Cloudinary
+        help_text='Upload verification document (ID, degree, certificate, etc.)'
     )
-    
     verify_status = models.CharField(max_length=15, choices=VERIFY_STATUS_CHOICES, default='Pending')
     avg_rating = models.FloatField(default=0.0)
     denial_reason = models.TextField(blank=True, null=True) 
+    def get_verify_doc_url(self):
+        """Get the full URL of the verification document if it exists"""
+        if self.verify_doc:
+            return self.verify_doc.url
+        return None
 
+    def get_verify_doc_public_id(self):
+        """Get the Cloudinary public ID of the verification document"""
+        if self.verify_doc:
+            return self.verify_doc.public_id
+        return None
+
+    def delete_verify_doc(self):
+        """Delete the verification document from Cloudinary"""
+        if self.verify_doc:
+            try:
+                import cloudinary.uploader
+                public_id = self.verify_doc.public_id
+                cloudinary.uploader.destroy(public_id, resource_type='auto')
+                self.verify_doc = None
+                self.save()
+                logger.info(f"Deleted verification document for user {self.user.id}")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to delete verification document: {e}")
+                return False
+        return False
     def update_avg_rating(self):
         jobs = Job.objects.filter(
             applications__professional_id=self.user,
@@ -155,21 +168,7 @@ class ProfessionalProfile(models.Model):
             self.avg_rating = 0.0
             self.save()
             print(f"Debug: No rated jobs, avg_rating set to {self.avg_rating} for {self.user.email}")  # Debug
-    def get_verify_doc_url(self):
-        """Get the full Cloudinary URL for verification document"""
-        if self.verify_doc:
-            try:
-                if str(self.verify_doc).startswith('http'):
-                    return str(self.verify_doc)
-                
-                if hasattr(self.verify_doc, 'url'):
-                    return self.verify_doc.url
-                else:
-                    return CloudinaryImage(str(self.verify_doc)).build_url()
-            except Exception as e:
-                print(f"Error generating verify_doc URL: {e}")
-                return None
-        return None
+
     def __str__(self):
         return f"{self.user.name}'s Professional Profile"
 class Job(models.Model):
@@ -179,6 +178,17 @@ class Job(models.Model):
         ('Completed', 'Completed'),
         ('Closed', 'Closed'),
     ]
+     # NEW: Cloudinary document field
+    document = CloudinaryField(
+        'document',
+        null=True,
+        blank=True,
+        resource_type='auto',  # Supports images, videos, and raw files (PDFs, docs, etc.)
+        folder='job_documents/',
+        transformation=[],  # Organizes files in Cloudinary
+        help_text='Upload project documents, requirements, or reference files'
+    )
+
     professional_id = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,  # Use SET_NULL to avoid deleting jobs when a professional is deleted
@@ -195,20 +205,13 @@ class Job(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     budget = models.DecimalField(max_digits=10, decimal_places=2)
-    attachment = CloudinaryField(
-        'job_attachment',
-        folder='job_attachments',
-        resource_type='raw',  # Allows any file type
-        null=True,
-        blank=True,
-        help_text="Upload project requirements or reference documents"
-    )
     deadline = models.DateField()
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
         default='Open'
     )
+
     created_at = models.DateTimeField(default=now)
     advance_payment = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     rating = models.IntegerField(
@@ -220,40 +223,42 @@ class Job(models.Model):
 
     def __str__(self):
         return self.title
-    def get_attachment_url(self):
-        """Get the full Cloudinary URL for job attachment"""
-        if self.attachment:
-            try:
-                # If it's already a full URL, return as is
-                if str(self.attachment).startswith('http'):
-                    return str(self.attachment)
-                
-                # If it's a public_id, generate URL
-                if hasattr(self.attachment, 'url'):
-                    return self.attachment.url
-                else:
-                    # Generate URL from public_id
-                    return CloudinaryImage(str(self.attachment)).build_url()
-            except Exception as e:
-                print(f"Error generating attachment URL: {e}")
-                return None
+   
+
+    def get_document_url(self):
+        """Get the full URL of the uploaded document"""
+        if self.document:
+            return self.document.url
         return None
-    
-    def get_attachment_download_url(self):
-        """Get download URL with proper headers"""
-        if self.attachment:
-            try:
-                if str(self.attachment).startswith('http'):
-                    return str(self.attachment)
-                
-                # Generate URL with download flag
-                return CloudinaryImage(str(self.attachment)).build_url(
-                    flags="attachment"
-                )
-            except Exception as e:
-                print(f"Error generating download URL: {e}")
-                return None
+
+    def get_document_public_id(self):
+        """Get the Cloudinary public ID of the document"""
+        if self.document:
+            return self.document.public_id
         return None
+
+# Step 2: Update your serializer method in account/serializers.py
+# In your JobSerializer class, update the get_document_url method:
+
+    def get_document_url(self, obj):
+        """Return the full URL of the document if it exists"""
+        if hasattr(obj, 'document') and obj.document:
+            return obj.document.url
+        return None
+
+    # Step 3: Alternative - Temporary fix for existing serializer
+    # If you want to avoid the error immediately while testing, you can update the serializer method to:
+
+    def get_document_url(self, obj):
+        """Return the full URL of the document if it exists - with error handling"""
+        try:
+            if hasattr(obj, 'document') and obj.document:
+                return obj.document.url
+            elif hasattr(obj, 'get_document_url'):
+                return obj.get_document_url()
+            return None
+        except AttributeError:
+            return None
 # accounts/models.py
 # accounts/models.py
 class JobApplication(models.Model):
@@ -261,8 +266,8 @@ class JobApplication(models.Model):
         ('Applied', 'Applied'),
         ('Accepted', 'Accepted'),
         ('Rejected', 'Rejected'),
-        ('Completed', 'Completed'), 
-        ('Cancelled', 'Cancelled'), 
+        ('Completed', 'Completed'),  # Added
+        ('Cancelled', 'Cancelled'),  # Added
     ]
 
     application_id = models.AutoField(primary_key=True)
@@ -341,33 +346,43 @@ class Complaint(models.Model):
     STATUS_CHOICES = (
         ('PENDING', 'Pending'),
         ('IN_PROGRESS', 'In Progress'),
-         ('AWAITING_USER_RESPONSE', 'Awaiting User Response'), 
+        ('AWAITING_USER_RESPONSE', 'Awaiting User Response'),
+        ('NEEDS_FURTHER_ACTION', 'Needs Further Action'),
         ('RESOLVED', 'Resolved'),
-         ('NEEDS_FURTHER_ACTION', 'Needs Further Action'),
         ('CLOSED', 'Closed'),
     )
-
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='complaints')
-    description = models.TextField()
-    admin_response = models.TextField(blank=True, null=True)  # New field for admin response
+    # NEW FIELDS for enhanced functionality
+    admin_response = models.TextField(blank=True, null=True)
     responded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.SET_NULL, 
         null=True, 
         blank=True, 
         related_name='responded_complaints'
-    )  # Track which admin responded
-    response_date = models.DateTimeField(null=True, blank=True) 
-    client_feedback = models.TextField(blank=True, null=True)  # Why response wasn't helpful
-    feedback_date = models.DateTimeField(null=True, blank=True)
-    resolution_rating = models.IntegerField(
+    )
+    response_date = models.DateTimeField(null=True, blank=True)
+    
+    # Client feedback fields
+    client_feedback = models.TextField(blank=True, null=True)
+    resolution_rating = models.PositiveSmallIntegerField(
         null=True, 
         blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(5)]
-    )  
-    status = models.CharField(max_length=100, choices=STATUS_CHOICES, default='PENDING')
+    )
+    feedback_date = models.DateTimeField(null=True, blank=True)
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='complaints')
+    description = models.TextField()
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='PENDING')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    @property
+    def can_mark_resolved(self):
+        return self.status == 'AWAITING_USER_RESPONSE'
+    
+    @property
+    def responded_by_name(self):
+        return self.responded_by.name if self.responded_by else None
 
     class Meta:
         ordering = ['-created_at']
@@ -389,12 +404,17 @@ class Message(models.Model):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
     content = models.TextField(blank=True, null=True)  # Allow blank for file-only messages
-    file = models.FileField(upload_to='chat_files/', blank=True, null=True)  # Store files in 'chat_files/' directory
+    file = models.FileField(
+        upload_to='%Y/%m/%d/', 
+        storage=LocalFileStorage(),
+        blank=True, 
+        null=True
+    )  # Store files in 'chat_files/' directory
     file_type = models.CharField(max_length=20, blank=True, null=True)  # E.g., 'image', 'document', 'text'
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
-    file = models.FileField(upload_to='conversation_files/%Y/%m/%d/', null=True, blank=True)
-    file_type = models.CharField(max_length=20, null=True, blank=True)
+    
+   
     
     # Add this new field to store the absolute URL
     file_absolute_url = models.URLField(max_length=500, null=True, blank=True)
@@ -403,3 +423,10 @@ class Message(models.Model):
     
     def __str__(self):
         return f"Message from {self.sender.name} at {self.created_at}"
+
+    def save(self, *args, **kwargs):
+        # Auto-generate absolute URL when file is saved
+        super().save(*args, **kwargs)
+        if self.file and not self.file_absolute_url:
+            # This will be set by the view after getting the request context
+            pass

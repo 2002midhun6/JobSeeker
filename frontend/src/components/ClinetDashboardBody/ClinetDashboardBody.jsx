@@ -504,10 +504,8 @@ function ClientDashBoardContent() {
               icon="✅"
             />
             <StatCard
-              title="Total Investment"
-              value={formatCurrency(stats.totalBudget)}
-              color="#f59e0b"
-              icon="💰"
+              title="Client"
+            color="#8b5cf6"
             />
             {stats.avgRating && (
               <StatCard

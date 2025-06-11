@@ -30,88 +30,113 @@ function VideoCall({ jobId, userInfo, onEndCall }) {
 
 
   // Setup WebSocket connection
-  useEffect(() => {
-    const connectWebSocket = async () => {
-      try {
-        if (socket) {
-          socket.close();
-        }
+  // Replace this section in your VideoCall component:
 
-        console.log('Getting video call WebSocket auth token...');
-        const response = await fetch('https://api.midhung.in/api/ws-auth-token/', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to get auth token: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const token = data.access_token;
+// Setup WebSocket connection
+// Replace this section in your VideoCall component:
 
-        if (!token) {
-          throw new Error('No WebSocket auth token received');
-        }
-
-        const wsUrl = `wss://${baseUrl}//ws/video-call/${jobId}/?token=${encodeURIComponent(token)}`;
-        console.log('Connecting to video call WebSocket:', wsUrl);
-
-        const ws = new WebSocket(wsUrl);
-
-        ws.onopen = () => {
-          console.log('Video call WebSocket connected successfully');
-          setSocketConnected(true);
-          setSocketError(null);
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log('Received video call message:', data);
-            handleWebSocketMessage(data);
-          } catch (error) {
-            console.error('Error parsing video call message:', error);
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error('Video call WebSocket error:', error);
-          setSocketConnected(false);
-          setSocketError('Connection error. Please try again.');
-        };
-
-        ws.onclose = (event) => {
-          console.log(`Video call WebSocket closed: code=${event.code}`);
-          setSocketConnected(false);
-          
-          if (event.code === 4001) {
-            setSocketError('Authentication failed. Please log in again.');
-          } else if (event.code === 4003) {
-            setSocketError('You do not have permission to join this call.');
-          } else {
-            setSocketError('Connection closed. Please try again.');
-          }
-        };
-
-        setSocket(ws);
-      } catch (error) {
-        console.error('Failed to connect to video call:', error);
-        setSocketConnected(false);
-        setSocketError(`Connection failed: ${error.message}`);
-      }
-    };
-
-    connectWebSocket();
-
-    // Cleanup on unmount
-    return () => {
-      cleanupCall();
+// Setup WebSocket connection
+useEffect(() => {
+  const connectWebSocket = async () => {
+    try {
       if (socket) {
         socket.close();
       }
-    };
-  }, [jobId]);
+
+      console.log('Getting video call WebSocket auth token...');
+      const response = await fetch('https://api.midhung.in/api/ws-auth-token/', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to get auth token: ${response.status}`);
+      }
+      
+      // FIX: Add await keyword here
+      const data = await response.json();
+      const token = data.access_token;
+
+      if (!token) {
+        throw new Error('No WebSocket auth token received');
+      }
+
+      // FIXED: Proper WebSocket URL construction
+      // Extract hostname from baseUrl and construct proper WebSocket URL
+      const getWebSocketUrl = (httpUrl) => {
+        try {
+          const url = new URL(httpUrl);
+          const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+          return `${wsProtocol}//${url.host}`;
+        } catch (error) {
+          console.error('Error parsing base URL:', error);
+          // Fallback
+          return 'wss://api.midhung.in';
+        }
+      };
+
+      const wsBaseUrl = getWebSocketUrl(baseUrl);
+      const wsUrl = `${wsBaseUrl}/ws/video-call/${jobId}/?token=${encodeURIComponent(token)}`;
+      
+      console.log('Base URL:', baseUrl);
+      console.log('WebSocket Base URL:', wsBaseUrl);
+      console.log('Connecting to video call WebSocket:', wsUrl);
+
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('Video call WebSocket connected successfully');
+        setSocketConnected(true);
+        setSocketError(null);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Received video call message:', data);
+          handleWebSocketMessage(data);
+        } catch (error) {
+          console.error('Error parsing video call message:', error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('Video call WebSocket error:', error);
+        setSocketConnected(false);
+        setSocketError('Connection error. Please try again.');
+      };
+
+      ws.onclose = (event) => {
+        console.log(`Video call WebSocket closed: code=${event.code}`);
+        setSocketConnected(false);
+        
+        if (event.code === 4001) {
+          setSocketError('Authentication failed. Please log in again.');
+        } else if (event.code === 4003) {
+          setSocketError('You do not have permission to join this call.');
+        } else {
+          setSocketError('Connection closed. Please try again.');
+        }
+      };
+
+      setSocket(ws);
+    } catch (error) {
+      console.error('Failed to connect to video call:', error);
+      setSocketConnected(false);
+      setSocketError(`Connection failed: ${error.message}`);
+    }
+  };
+
+  connectWebSocket();
+
+  // Cleanup on unmount
+  return () => {
+    cleanupCall();
+    if (socket) {
+      socket.close();
+    }
+  };
+}, [jobId]);
 
   // Process buffered ICE candidates after remote description is set
   const processBufferedIceCandidates = () => {

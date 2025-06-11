@@ -7,9 +7,9 @@ import './ProfessionalJobView.css';
 
 const baseUrl = import.meta.env.VITE_API_URL;
 
-// Updated File Display Component for Cloudinary
-const FileAttachment = ({ attachmentData }) => {
-  if (!attachmentData) return null;
+// Updated File Display Component for Job Documents
+const JobDocumentAttachment = ({ documentData, documentInfo }) => {
+  if (!documentData && !documentInfo) return null;
 
   const getFileIcon = (fileName) => {
     const extension = fileName.toLowerCase().split('.').pop();
@@ -27,48 +27,258 @@ const FileAttachment = ({ attachmentData }) => {
       case 'gif': return '🖼️';
       case 'zip':
       case 'rar': return '📦';
+      case 'txt': return '📃';
       default: return '📎';
     }
   };
 
-  // Handle both new structured format and legacy URL format
-  const getAttachmentInfo = (attachment) => {
-    if (!attachment) {
-      return { filename: '', url: '', downloadUrl: '' };
+  const getFileTypeCategory = (fileName) => {
+    const extension = fileName.toLowerCase().split('.').pop();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension)) {
+      return 'image';
+    } else if (extension === 'pdf') {
+      return 'pdf';
+    } else if (['doc', 'docx'].includes(extension)) {
+      return 'document';
+    } else if (['xls', 'xlsx'].includes(extension)) {
+      return 'spreadsheet';
+    } else if (['ppt', 'pptx'].includes(extension)) {
+      return 'presentation';
+    } else if (['zip', 'rar', '7z'].includes(extension)) {
+      return 'archive';
+    } else if (extension === 'txt') {
+      return 'text';
     }
-
-    // If attachment has structured data (new format)
-    if (typeof attachment === 'object' && attachment.attachment_url) {
-      return {
-        filename: attachment.attachment_filename || 'attachment',
-        url: attachment.attachment_url,
-        downloadUrl: attachment.attachment_download_url || attachment.attachment_url
-      };
-    }
-
-    // Legacy format: attachment is a URL string
-    if (typeof attachment === 'string') {
-      const filename = attachment.includes('/') 
-        ? decodeURIComponent(attachment.split('/').pop()) 
-        : attachment;
-      
-      const fullUrl = attachment.startsWith('http') 
-        ? attachment 
-        : `${baseUrl}${attachment.startsWith('/') ? '' : '/'}${attachment}`;
-
-      return {
-        filename,
-        url: fullUrl,
-        downloadUrl: fullUrl
-      };
-    }
-
-    return { filename: 'Unknown file', url: '', downloadUrl: '' };
+    return 'other';
   };
 
-  const attachmentInfo = getAttachmentInfo(attachmentData);
+  const getViewButtonText = (fileName) => {
+    const fileType = getFileTypeCategory(fileName);
+    switch (fileType) {
+      case 'image': return 'View Image';
+      case 'pdf': return 'View PDF';
+      case 'document': return 'View Document';
+      case 'spreadsheet': return 'View Spreadsheet';
+      case 'presentation': return 'View Presentation';
+      case 'archive': return 'Download Archive';
+      case 'text': return 'View Text';
+      default: return 'View File';
+    }
+  };
 
-  if (!attachmentInfo.url) return null;
+  const createCloudinaryUrl = (originalUrl, transformation) => {
+    if (!originalUrl || !originalUrl.includes('cloudinary.com')) {
+      return originalUrl;
+    }
+    
+    // Split URL at /upload/
+    const urlParts = originalUrl.split('/upload/');
+    if (urlParts.length !== 2) return originalUrl;
+    
+    const baseUrl = urlParts[0] + '/upload/';
+    const pathAfterUpload = urlParts[1];
+    
+    return `${baseUrl}${transformation}/${pathAfterUpload}`;
+  };
+
+  const openFilePreview = (url, fileName, docInfo = null) => {
+    if (!url) return;
+    
+    console.log('Opening job document:', { url, fileName, docInfo });
+    
+    // Use document info if available, otherwise detect from filename
+    const fileType = docInfo?.file_type ? 
+      getFileTypeCategory(`dummy.${docInfo.file_type}`) : 
+      getFileTypeCategory(fileName);
+    
+    // Create appropriate URLs for different file types
+    let viewUrl = url;
+    let downloadUrl = url;
+    
+    if (docInfo?.view_url) {
+      viewUrl = docInfo.view_url;
+    } else if (url.includes('cloudinary.com')) {
+      if (fileType === 'pdf') {
+        // For PDFs, use fl_inline to force browser viewing
+        viewUrl = createCloudinaryUrl(url, 'fl_inline');
+      } else if (fileType === 'image') {
+        // Images can use original URL
+        viewUrl = url;
+      } else {
+        // Other documents, try inline first
+        viewUrl = createCloudinaryUrl(url, 'fl_inline');
+      }
+    }
+    
+    if (docInfo?.download_url) {
+      downloadUrl = docInfo.download_url;
+    } else if (url.includes('cloudinary.com')) {
+      downloadUrl = createCloudinaryUrl(url, 'fl_attachment');
+    }
+    
+    console.log('Generated URLs for job document:', { viewUrl, downloadUrl, fileType });
+    
+    if (fileType === 'image') {
+      // For images, open in new tab
+      window.open(viewUrl, '_blank');
+    } else if (fileType === 'pdf') {
+      // For PDFs, create a custom viewer
+      try {
+        const pdfWindow = window.open('', '_blank');
+        if (pdfWindow) {
+          pdfWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Job Document - ${fileName}</title>
+              <style>
+                body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+                .header { 
+                  background: #f5f5f5; 
+                  padding: 15px; 
+                  margin-bottom: 10px; 
+                  border-radius: 5px;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                }
+                .title { font-size: 18px; font-weight: bold; }
+                .download-btn { 
+                  background: #007bff; 
+                  color: white; 
+                  padding: 10px 20px; 
+                  text-decoration: none; 
+                  border-radius: 5px; 
+                  font-weight: bold;
+                }
+                .download-btn:hover { background: #0056b3; }
+                iframe { width: 100%; height: calc(100vh - 100px); border: 1px solid #ddd; }
+                .error { 
+                  color: red; 
+                  margin: 20px; 
+                  padding: 15px; 
+                  background: #ffe6e6; 
+                  border-radius: 5px; 
+                }
+                .loading { 
+                  text-align: center; 
+                  padding: 50px; 
+                  font-size: 16px; 
+                }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <div class="title">📄 Job Document: ${fileName}</div>
+                <a href="${downloadUrl}" class="download-btn" download>Download PDF</a>
+              </div>
+              <div class="loading">Loading PDF...</div>
+              <iframe 
+                src="${viewUrl}" 
+                title="Job Document Viewer" 
+                onload="document.querySelector('.loading').style.display='none'; this.style.display='block'" 
+                onerror="document.getElementById('error').style.display='block'; document.querySelector('.loading').style.display='none'"
+                style="display:none"
+              >
+                <p>Your browser does not support PDFs. <a href="${downloadUrl}">Download the PDF</a>.</p>
+              </iframe>
+              <div id="error" class="error" style="display:none">
+                <h3>⚠️ Failed to load PDF</h3>
+                <p>The PDF could not be displayed in your browser. This might be due to:</p>
+                <ul>
+                  <li>Browser security settings</li>
+                  <li>PDF file format issues</li>
+                  <li>Network connectivity</li>
+                </ul>
+                <p><a href="${downloadUrl}" class="download-btn">Click here to download the PDF</a> instead.</p>
+              </div>
+            </body>
+            </html>
+          `);
+          pdfWindow.document.close();
+        } else {
+          // Popup blocked, fallback to download
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = fileName;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } catch (error) {
+        console.error('Error opening PDF:', error);
+        // Force download on error
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = fileName;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } else {
+      // For other files, try view first, then download
+      try {
+        const fileWindow = window.open(viewUrl, '_blank');
+        if (!fileWindow) {
+          // Fallback to download
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = fileName;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } catch (error) {
+        // Force download on error
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = fileName;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+  };
+
+  // Get document information
+  const getDocumentInfo = () => {
+    // If we have structured document info, use it
+    if (documentInfo) {
+      return {
+        filename: documentInfo.filename || 'Job Document',
+        url: documentData || documentInfo.url,
+        info: documentInfo
+      };
+    }
+    
+    // If we only have the document URL, extract filename
+    if (documentData) {
+      let filename = 'Job Document';
+      if (typeof documentData === 'string') {
+        if (documentData.includes('cloudinary.com')) {
+          const parts = documentData.split('/');
+          filename = decodeURIComponent(parts[parts.length - 1].split('?')[0]);
+        } else {
+          filename = decodeURIComponent(documentData.split('/').pop().split('?')[0]);
+        }
+      }
+      
+      return {
+        filename,
+        url: documentData,
+        info: null
+      };
+    }
+    
+    return null;
+  };
+
+  const docInfo = getDocumentInfo();
+  if (!docInfo || !docInfo.url) return null;
 
   return (
     <div className="file-attachment">
@@ -77,28 +287,25 @@ const FileAttachment = ({ attachmentData }) => {
         <span className="attachment-label">Project Documents</span>
       </div>
       <div className="file-preview-compact">
-        <span className="file-icon">{getFileIcon(attachmentInfo.filename)}</span>
+        <span className="file-icon">{getFileIcon(docInfo.filename)}</span>
         <div className="file-info">
-          <div className="file-name" title={attachmentInfo.filename}>
-            {attachmentInfo.filename}
+          <div className="file-name" title={docInfo.filename}>
+            {docInfo.filename}
           </div>
           {process.env.NODE_ENV === 'development' && (
             <div className="file-url-debug" style={{ fontSize: '10px', color: '#666', marginTop: '2px' }}>
-              URL: {attachmentInfo.url}
+              URL: {docInfo.url}
             </div>
           )}
-          <a 
-            href={attachmentInfo.downloadUrl} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="file-download-link"
+          <button
+            className="file-view-button"
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Downloading attachment:', attachmentInfo.downloadUrl);
+              openFilePreview(docInfo.url, docInfo.filename, docInfo.info);
             }}
           >
-            View/Download
-          </a>
+            {getViewButtonText(docInfo.filename)}
+          </button>
         </div>
       </div>
     </div>
@@ -115,7 +322,7 @@ function ProfessionalJobs() {
   const [currentPage, setCurrentPage] = useState(1);
   const [jobsPerPage] = useState(5);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortOrder, setSortOrder] = useState('default'); // 'default' or 'newest'
+  const [sortOrder, setSortOrder] = useState('default');
   const [profileData, setProfileData] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
@@ -152,7 +359,7 @@ function ProfessionalJobs() {
         const response = await axios.get(`${baseUrl}/api/open-jobs/`, {
           withCredentials: true,
         });
-        console.log('Fetched jobs with attachments:', response.data); // Debug log
+        console.log('Fetched jobs with documents:', response.data); // Debug log
         setOpenJobs(response.data);
         setLoading(false);
       } catch (err) {
@@ -183,17 +390,12 @@ function ProfessionalJobs() {
   }, [user, isAuthenticated, navigate]);
 
   const canApplyForJobs = useCallback(() => {
-    // Check if professional is available and verified
     if (!profileData) return false;
-    
     const isAvailable = profileData.availability_status === 'Available';
-    const isVerified = profileData.verify_status === 'Verified';
-    
     return isAvailable;
   }, [profileData]);
 
   const handleApply = async (jobId) => {
-    // Check availability before allowing application
     if (!canApplyForJobs()) {
       let message = '';
       
@@ -251,9 +453,9 @@ function ProfessionalJobs() {
     )
     .sort((a, b) => {
       if (sortOrder === 'newest') {
-        return new Date(b.created_at) - new Date(a.created_at); // Newest first
+        return new Date(b.created_at) - new Date(a.created_at);
       }
-      return 0; // Default order
+      return 0;
     });
 
   // Pagination logic
@@ -270,12 +472,12 @@ function ProfessionalJobs() {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset to first page on search
+    setCurrentPage(1);
   };
 
   const handleSortChange = (e) => {
     setSortOrder(e.target.value);
-    setCurrentPage(1); // Reset to first page on sort
+    setCurrentPage(1);
   };
   
   const handleUpdateAvailability = () => {
@@ -314,20 +516,22 @@ function ProfessionalJobs() {
     });
   };
 
-  // Helper function to get attachment data from job
-  const getJobAttachment = (job) => {
-    // Check for new structured format first
-    if (job.attachment_url || job.attachment_download_url || job.attachment_filename) {
+  // Helper function to get job document data
+  const getJobDocument = (job) => {
+    // Check for document_url field (main document URL)
+    if (job.document_url) {
       return {
-        attachment_url: job.attachment_url,
-        attachment_download_url: job.attachment_download_url,
-        attachment_filename: job.attachment_filename
+        documentData: job.document_url,
+        documentInfo: job.document_info || null
       };
     }
     
-    // Fallback to legacy attachment field
-    if (job.attachment) {
-      return job.attachment;
+    // Fallback to document field
+    if (job.document) {
+      return {
+        documentData: job.document,
+        documentInfo: job.document_info || null
+      };
     }
     
     return null;
@@ -421,7 +625,7 @@ function ProfessionalJobs() {
           <div className="job-list">
             <ul className="job-list-ul">
               {currentJobs.map((job) => {
-                const attachmentData = getJobAttachment(job);
+                const documentData = getJobDocument(job);
                 
                 return (
                   <li key={job.job_id} className="job-item">
@@ -433,9 +637,12 @@ function ProfessionalJobs() {
                     <div className="job-content">
                       <p className="job-description">{job.description || 'No description provided'}</p>
                       
-                      {/* Updated File Attachment Display */}
-                      {attachmentData && (
-                        <FileAttachment attachmentData={attachmentData} />
+                      {/* Updated Job Document Display */}
+                      {documentData && (
+                        <JobDocumentAttachment 
+                          documentData={documentData.documentData} 
+                          documentInfo={documentData.documentInfo}
+                        />
                       )}
                       
                       <div className="job-details">

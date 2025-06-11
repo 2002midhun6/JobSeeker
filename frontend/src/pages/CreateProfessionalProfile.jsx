@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import './CreateProfessionalProfile.css';
 import ProfessionalHeader from '../components/ProfessionalDashboard/ProfessionalDashboardHeader';
+
 const baseUrl = import.meta.env.VITE_API_URL;
+
 function CreateProfessionalProfile() {
   const [formData, setFormData] = useState({
     bio: '',
@@ -17,6 +19,7 @@ function CreateProfessionalProfile() {
   const [profileExists, setProfileExists] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState('Pending');
   const [denialReason, setDenialReason] = useState('');
+  const [currentVerifyDoc, setCurrentVerifyDoc] = useState(null); // NEW: Current document URL
   const [errors, setErrors] = useState({});
   const [validFields, setValidFields] = useState({});
   const [profileUpdated, setProfileUpdated] = useState(false);
@@ -29,17 +32,24 @@ function CreateProfessionalProfile() {
       const response = await axios.get(`${baseUrl}/api/profile/`, {
         withCredentials: true,
       });
-      const { user, ...profileData } = response.data;
+      
+      const { user, verify_doc_url, ...profileData } = response.data; // Extract verify_doc_url
+      
+      console.log('Fetched profile data:', response.data);
+      console.log('Verification document URL:', verify_doc_url);
+      
       setFormData({
         bio: profileData.bio || '',
         skills: Array.isArray(profileData.skills) ? profileData.skills : [],
         experience_years: profileData.experience_years || 0,
         availability_status: profileData.availability_status || 'Available',
         portfolio_links: Array.isArray(profileData.portfolio_links) ? profileData.portfolio_links : [],
-        verify_doc: null,
+        verify_doc: null, // Don't set the file object, just track the URL
       });
+      
       setVerifyStatus(response.data.verify_status || 'Pending');
       setDenialReason(response.data.denial_reason || '');
+      setCurrentVerifyDoc(verify_doc_url); // Set current document URL
       setProfileExists(true);
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -84,7 +94,7 @@ function CreateProfessionalProfile() {
         } else if (skillsArray.length > 10) {
           error = 'Cannot add more than 10 skills';
         } else {
-          const skillRegex = /^[a-zA-Z0-9\s\-_,#+.]{1,100}$/;
+          const skillRegex = /^[a-zA-Z0-9\s\-_,#+.]{1,50}$/; // Updated max length to 50
           const invalidSkills = skillsArray.filter(skill => {
             if (!isNaN(skill)) return true;
             return !skillRegex.test(skill);
@@ -154,13 +164,21 @@ function CreateProfessionalProfile() {
       newValidFields.availability_status = true;
     }
 
-    // Validate verify doc
-    if (!profileExists && !formData.verify_doc) {
+    // Validate verify doc - Updated validation logic
+    if (!profileExists && !formData.verify_doc && !currentVerifyDoc) {
       newErrors.verify_doc = 'Verification document is required for new profiles';
     } else if (formData.verify_doc) {
-      const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg'];
+      const allowedTypes = [
+        'application/pdf', 
+        'image/png', 
+        'image/jpeg', 
+        'image/jpg', 
+        'image/gif',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
       if (!allowedTypes.includes(formData.verify_doc.type)) {
-        newErrors.verify_doc = 'Document must be a PDF, PNG, or JPEG';
+        newErrors.verify_doc = 'Document must be a PDF, DOC, or image file';
       } else if (formData.verify_doc.size > 5 * 1024 * 1024) {
         newErrors.verify_doc = 'Document must be less than 5MB';
       } else {
@@ -189,6 +207,10 @@ function CreateProfessionalProfile() {
     if (name === 'verify_doc') {
       newValue = files[0];
       setFormData({ ...formData, verify_doc: newValue });
+      // Clear current document URL when new file is selected
+      if (newValue) {
+        setCurrentVerifyDoc(null);
+      }
     } else if (name === 'skills' || name === 'portfolio_links') {
       const arrayValue = value.split(',').map(item => item.trim()).filter(item => item);
       newValue = arrayValue;
@@ -214,7 +236,10 @@ function CreateProfessionalProfile() {
 
     setIsLoading(true);
 
+    // Create FormData for file upload support
     const data = new FormData();
+    
+    // Add form fields
     for (const key in formData) {
       if ((key === 'skills' || key === 'portfolio_links') && Array.isArray(formData[key])) {
         data.append(key, JSON.stringify(formData[key]));
@@ -224,6 +249,13 @@ function CreateProfessionalProfile() {
         data.append(key, formData[key]);
       }
     }
+
+    console.log('Submitting profile data:', {
+      profileExists,
+      hasNewFile: !!formData.verify_doc,
+      hasCurrentDoc: !!currentVerifyDoc,
+      formData: Object.fromEntries(data.entries())
+    });
 
     try {
       let response;
@@ -239,6 +271,8 @@ function CreateProfessionalProfile() {
         });
       }
       
+      console.log('Profile save response:', response.data);
+      
       Swal.fire({
         icon: 'success',
         title: 'Success',
@@ -250,10 +284,18 @@ function CreateProfessionalProfile() {
       setProfileUpdated(prev => !prev);
     } catch (err) {
       console.error('Error submitting profile:', err.response?.data);
+      
+      let errorMessage = 'Failed to save profile';
+      if (err.response?.data?.verify_doc) {
+        errorMessage = `Document upload error: ${err.response.data.verify_doc[0]}`;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      }
+      
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: err.response?.data?.error || 'Failed to save profile',
+        text: errorMessage,
         confirmButtonColor: '#dc3545',
       });
     } finally {
@@ -262,7 +304,7 @@ function CreateProfessionalProfile() {
   };
 
   const handleVerificationRequest = async () => {
-    if (!profileExists || (!formData.verify_doc && verifyStatus === 'Not Verified')) {
+    if (!profileExists || (!formData.verify_doc && !currentVerifyDoc && verifyStatus === 'Not Verified')) {
       Swal.fire({
         icon: 'error',
         title: 'Error',
@@ -364,6 +406,52 @@ function CreateProfessionalProfile() {
             {link}
           </a>
         ))}
+      </div>
+    );
+  };
+
+  // NEW: Render current verification document
+  const renderCurrentDocument = () => {
+    if (!currentVerifyDoc) return null;
+
+    const getFileNameFromUrl = (url) => {
+      if (url.includes('cloudinary.com')) {
+        const parts = url.split('/');
+        const filename = parts[parts.length - 1];
+        return decodeURIComponent(filename.split('?')[0]);
+      }
+      return 'Verification Document';
+    };
+
+    const getFileIcon = (url) => {
+      const filename = getFileNameFromUrl(url).toLowerCase();
+      if (filename.includes('.pdf')) return '📄';
+      if (filename.includes('.doc')) return '📝';
+      if (filename.includes('.jpg') || filename.includes('.jpeg') || filename.includes('.png') || filename.includes('.gif')) return '🖼️';
+      return '📎';
+    };
+
+    return (
+      <div className="current-document">
+        <div className="document-info">
+          <span className="document-icon">{getFileIcon(currentVerifyDoc)}</span>
+          <div className="document-details">
+            <div className="document-name">{getFileNameFromUrl(currentVerifyDoc)}</div>
+            <div className="document-status">Current verification document</div>
+          </div>
+          <a 
+            href={currentVerifyDoc} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="document-view-link"
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Opening verification document:', currentVerifyDoc);
+            }}
+          >
+            View Document
+          </a>
+        </div>
       </div>
     );
   };
@@ -488,16 +576,27 @@ function CreateProfessionalProfile() {
             </div>
           </div>
 
-          {/* Verification Section */}
+          {/* Verification Section - UPDATED */}
           {verifyStatus !== 'Verified' && (
             <div className="form-section">
               <h4>📄 Verification Document</h4>
               
+              {/* Show current document if exists */}
+              {currentVerifyDoc && !formData.verify_doc && (
+                <div className="current-document-section">
+                  <label>Current Verification Document</label>
+                  {renderCurrentDocument()}
+                  <p className="document-help">
+                    You can upload a new document to replace the current one.
+                  </p>
+                </div>
+              )}
+              
               <div className={getFieldClass("verify_doc")}>
                 <label htmlFor="verify_doc">
-                  Upload Verification Document
+                  {currentVerifyDoc && !formData.verify_doc ? 'Replace Verification Document' : 'Upload Verification Document'}
                   <small style={{ fontWeight: 400, textTransform: 'none' }}>
-                    (PDF, PNG, or JPEG - Max 5MB)
+                    (PDF, DOC, PNG, or JPEG - Max 5MB)
                   </small>
                 </label>
                 <input 
@@ -505,13 +604,22 @@ function CreateProfessionalProfile() {
                   id="verify_doc" 
                   name="verify_doc" 
                   onChange={handleChange} 
-                  accept=".pdf,.png,.jpeg,.jpg" 
+                  accept=".pdf,.png,.jpeg,.jpg,.doc,.docx" 
                 />
                 {renderValidationIcon("verify_doc")}
                 {errors.verify_doc && <div className="error-message">{errors.verify_doc}</div>}
                 {formData.verify_doc && (
                   <div style={{ marginTop: '8px', fontSize: '14px', color: '#059669' }}>
-                    ✅ Selected: {formData.verify_doc.name}
+                    ✅ New file selected: {formData.verify_doc.name}
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                      This will replace your current verification document when you save.
+                    </div>
+                  </div>
+                )}
+                {!formData.verify_doc && !currentVerifyDoc && (
+                  <div className="document-help">
+                    <span className="help-icon">💡</span>
+                    <span>Upload ID card, degree certificate, or professional license for verification. Files are stored securely in Cloudinary.</span>
                   </div>
                 )}
               </div>

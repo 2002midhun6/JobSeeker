@@ -172,29 +172,31 @@ const PaginationControls = React.memo(({ currentPage, totalItems, itemsPerPage, 
   );
 });
 
-// Enhanced Verification Document Component
-const VerificationDocument = ({ verifyDoc, verifyDocUrl, verifyDocFilename }) => {
-  // Helper function to get document info from various formats
+// Updated VerificationDocument component from document 1
+const VerificationDocument = ({ request }) => {
+  // Extract document information from the request - Updated for Cloudinary
   const getDocumentInfo = () => {
-    // New format: separate URL and filename fields
-    if (verifyDocUrl) {
+    console.log('Processing document info for request:', request); // Debug log
+    
+    // Check for the new Cloudinary format first
+    if (request.verify_doc_url) {
       return {
-        url: verifyDocUrl,
-        filename: verifyDocFilename || 'verification_document',
+        url: request.verify_doc_url,
+        filename: request.verify_doc_filename || 'verification_document',
         hasDocument: true
       };
     }
     
-    // Legacy format: CloudinaryField or URL string
-    if (verifyDoc) {
-      // If it's a URL string
-      if (typeof verifyDoc === 'string') {
-        const url = verifyDoc.startsWith('http') 
-          ? verifyDoc 
-          : `${baseUrl}${verifyDoc.startsWith('/') ? '' : '/'}${verifyDoc}`;
+    // Legacy support for other formats
+    if (request.verify_doc) {
+      // If it's a URL string (Cloudinary URL)
+      if (typeof request.verify_doc === 'string') {
+        const url = request.verify_doc.startsWith('http') 
+          ? request.verify_doc 
+          : `${baseUrl}${request.verify_doc.startsWith('/') ? '' : '/'}${request.verify_doc}`;
         
-        const filename = verifyDoc.includes('/') 
-          ? decodeURIComponent(verifyDoc.split('/').pop()) 
+        const filename = request.verify_doc.includes('/') 
+          ? decodeURIComponent(request.verify_doc.split('/').pop().split('?')[0]) 
           : 'verification_document';
         
         return {
@@ -205,15 +207,16 @@ const VerificationDocument = ({ verifyDoc, verifyDocUrl, verifyDocFilename }) =>
       }
       
       // If it's an object with URL property
-      if (typeof verifyDoc === 'object' && verifyDoc.url) {
+      if (typeof request.verify_doc === 'object' && request.verify_doc.url) {
         return {
-          url: verifyDoc.url,
-          filename: verifyDoc.filename || 'verification_document',
+          url: request.verify_doc.url,
+          filename: request.verify_doc.filename || request.verify_doc_filename || 'verification_document',
           hasDocument: true
         };
       }
     }
     
+    console.log('No document found for request:', request.user?.email); // Debug log
     return {
       url: null,
       filename: null,
@@ -233,6 +236,8 @@ const VerificationDocument = ({ verifyDoc, verifyDocUrl, verifyDocFilename }) =>
       case 'jpeg':
       case 'png':
       case 'gif': return '🖼️';
+      case 'xls':
+      case 'xlsx': return '📊';
       default: return '📄';
     }
   };
@@ -276,21 +281,34 @@ const VerificationDocument = ({ verifyDoc, verifyDocUrl, verifyDocFilename }) =>
         <span style={{ fontSize: '20px' }}>
           {getFileIcon(documentInfo.filename)}
         </span>
-        <span style={{ 
-          fontWeight: '600',
-          color: '#0369a1',
-          fontSize: '14px'
-        }}>
-          {documentInfo.filename}
-        </span>
+        <div style={{ flex: 1 }}>
+          <div style={{ 
+            fontWeight: '600',
+            color: '#0369a1',
+            fontSize: '14px',
+            marginBottom: '2px'
+          }}>
+            {documentInfo.filename}
+          </div>
+          <div style={{
+            fontSize: '12px',
+            color: '#6b7280'
+          }}>
+            Stored securely in Cloudinary
+          </div>
+        </div>
       </div>
       
+      {/* Debug info for development */}
       {process.env.NODE_ENV === 'development' && (
         <div style={{
           fontSize: '10px',
           color: '#666',
           marginBottom: '8px',
-          wordBreak: 'break-all'
+          wordBreak: 'break-all',
+          background: '#f3f4f6',
+          padding: '4px',
+          borderRadius: '4px'
         }}>
           URL: {documentInfo.url}
         </div>
@@ -304,20 +322,35 @@ const VerificationDocument = ({ verifyDoc, verifyDocUrl, verifyDocFilename }) =>
           display: 'inline-flex',
           alignItems: 'center',
           gap: '6px',
-          padding: '6px 12px',
+          padding: '8px 12px',
           background: '#0369a1',
           color: 'white',
           textDecoration: 'none',
           borderRadius: '6px',
           fontSize: '13px',
           fontWeight: '500',
-          transition: 'background-color 0.2s'
+          transition: 'all 0.2s ease',
+          border: 'none',
+          cursor: 'pointer'
         }}
-        onMouseEnter={(e) => e.target.style.backgroundColor = '#075985'}
-        onMouseLeave={(e) => e.target.style.backgroundColor = '#0369a1'}
+        onMouseEnter={(e) => {
+          e.target.style.backgroundColor = '#075985';
+          e.target.style.transform = 'translateY(-1px)';
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.backgroundColor = '#0369a1';
+          e.target.style.transform = 'translateY(0)';
+        }}
         onClick={(e) => {
           e.stopPropagation();
           console.log('Opening verification document:', documentInfo.url);
+          
+          // Optional: Show loading indicator
+          const originalText = e.target.innerHTML;
+          e.target.innerHTML = '<span>🔄</span> Opening...';
+          setTimeout(() => {
+            e.target.innerHTML = originalText;
+          }, 1000);
         }}
       >
         <span>📎</span>
@@ -327,7 +360,7 @@ const VerificationDocument = ({ verifyDoc, verifyDocUrl, verifyDocFilename }) =>
   );
 };
 
-// Enhanced Verification Item Component
+// Updated VerificationItem component from document 2
 const VerificationItem = React.memo(({ request, onVerify, onDenyClick }) => {
   const renderSkills = () => {
     if (!request.skills || request.skills.length === 0) return null;
@@ -350,12 +383,19 @@ const VerificationItem = React.memo(({ request, onVerify, onDenyClick }) => {
     </span>
   );
 
-  // Check if document exists for verification
+  // Updated document check for Cloudinary
   const hasDocument = Boolean(
     request.verify_doc_url || 
-    request.verify_doc || 
-    (request.verify_doc && typeof request.verify_doc === 'string' && request.verify_doc.trim())
+    (request.verify_doc && typeof request.verify_doc === 'string' && request.verify_doc.trim()) ||
+    (request.verify_doc && typeof request.verify_doc === 'object' && request.verify_doc.url)
   );
+
+  // Debug log
+  console.log(`Document check for ${request.user?.email}:`, {
+    verify_doc_url: request.verify_doc_url,
+    verify_doc: request.verify_doc,
+    hasDocument
+  });
 
   return (
     <li className="verification-item">
@@ -395,13 +435,64 @@ const VerificationItem = React.memo(({ request, onVerify, onDenyClick }) => {
           <strong>Status:</strong> 
           {getStatusBadge(request.verify_status || 'Pending')}
         </p>
+
+        {/* Show denial reason if exists */}
+        {request.verify_status === 'Not Verified' && request.denial_reason && (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '6px',
+            padding: '12px',
+            marginTop: '8px'
+          }}>
+            <p style={{ 
+              margin: '0',
+              color: '#dc2626',
+              fontWeight: '600',
+              fontSize: '14px'
+            }}>
+              <strong>Previous Denial Reason:</strong> {request.denial_reason}
+            </p>
+          </div>
+        )}
+
+        {/* Show portfolio links if available */}
+        {request.portfolio_links && request.portfolio_links.length > 0 && (
+          <div style={{ marginTop: '8px' }}>
+            <p><strong>Portfolio Links:</strong></p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+              {request.portfolio_links.slice(0, 3).map((link, index) => (
+                <a
+                  key={index}
+                  href={link.startsWith('http') ? link : `https://${link}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontSize: '12px',
+                    color: '#3b82f6',
+                    textDecoration: 'none',
+                    padding: '2px 6px',
+                    background: '#eff6ff',
+                    borderRadius: '4px',
+                    border: '1px solid #dbeafe'
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = '#dbeafe'}
+                  onMouseLeave={(e) => e.target.style.background = '#eff6ff'}
+                >
+                  🔗 {link.length > 30 ? link.substring(0, 30) + '...' : link}
+                </a>
+              ))}
+              {request.portfolio_links.length > 3 && (
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                  +{request.portfolio_links.length - 3} more
+                </span>
+              )}
+            </div>
+          </div>
+        )}
         
         {/* Enhanced Verification Document Display */}
-        <VerificationDocument 
-          verifyDoc={request.verify_doc}
-          verifyDocUrl={request.verify_doc_url}
-          verifyDocFilename={request.verify_doc_filename}
-        />
+        <VerificationDocument request={request} />
       </div>
       
       <div className="action-buttons">
@@ -410,14 +501,29 @@ const VerificationItem = React.memo(({ request, onVerify, onDenyClick }) => {
           className="verify-btn"
           disabled={!hasDocument}
           title={!hasDocument ? 'Cannot verify without document' : 'Approve this professional'}
+          style={{
+            opacity: !hasDocument ? 0.6 : 1,
+            cursor: !hasDocument ? 'not-allowed' : 'pointer'
+          }}
         >
-          Verify Professional
+          {!hasDocument ? (
+            <>
+              <span>⚠️</span>
+              Cannot Verify
+            </>
+          ) : (
+            <>
+              <span>✅</span>
+              Verify Professional
+            </>
+          )}
         </button>
         <button
           onClick={() => onDenyClick(request.user.id)}
           className="deny-btn"
           title="Deny this verification request"
         >
+          <span>❌</span>
           Deny Request
         </button>
       </div>

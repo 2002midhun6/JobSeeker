@@ -91,7 +91,8 @@ const FormField = ({
   max,
   step,
   rows = 4,
-  className = ''
+  className = '',
+  onBlur
 }) => {
   const [focused, setFocused] = useState(false);
   
@@ -121,7 +122,10 @@ const FormField = ({
             onChange={onChange}
             placeholder={placeholder}
             onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onBlur={(e) => {
+              setFocused(false);
+              if (onBlur) onBlur(e);
+            }}
             rows={rows}
             className="field-input"
             required={required}
@@ -134,7 +138,10 @@ const FormField = ({
             onChange={onChange}
             placeholder={placeholder}
             onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onBlur={(e) => {
+              setFocused(false);
+              if (onBlur) onBlur(e);
+            }}
             min={min}
             max={max}
             step={step}
@@ -492,11 +499,11 @@ function JobPage() {
       }
     });
 
-    // Validate file if selected
+    // Validate file if selected - CHANGED: Using 'document' instead of 'attachment'
     if (selectedFile) {
       const fileError = validateFile(selectedFile);
       if (fileError) {
-        newErrors.attachment = fileError;
+        newErrors.document = fileError;
       }
     }
     
@@ -530,12 +537,12 @@ function JobPage() {
   const handleFileSelect = (file) => {
     setSelectedFile(file);
     
-    // Validate file immediately
+    // Validate file immediately - CHANGED: Using 'document' instead of 'attachment'
     if (file) {
       const fileError = validateFile(file);
-      setErrors({ ...errors, attachment: fileError });
+      setErrors({ ...errors, document: fileError });
     } else {
-      const { attachment, ...restErrors } = errors;
+      const { document, ...restErrors } = errors;
       setErrors(restErrors);
     }
   };
@@ -578,9 +585,9 @@ function JobPage() {
         formDataToSubmit.append('advance_payment', parseFloat(formData.advance_payment).toFixed(2));
       }
       
-      // Append file if selected
+      // CHANGED: Append file as 'document' instead of 'attachment' to match backend field
       if (selectedFile) {
-        formDataToSubmit.append('attachment', selectedFile);
+        formDataToSubmit.append('document', selectedFile);
       }
 
       console.log('Submitting form data with file:', selectedFile ? selectedFile.name : 'No file');
@@ -606,11 +613,15 @@ function JobPage() {
       setError('');
       setLoading(false);
 
-      // Show success alert
+      // ENHANCED: Show success alert with document upload info
+      const documentInfo = response.data.document_url ? 
+        'Document uploaded successfully to Cloudinary!' : 
+        'Job posted without document.';
+      
       await Swal.fire({
         icon: 'success',
         title: 'Job Posted Successfully! 🎉',
-        text: 'Your job has been posted and is now visible to professionals.',
+        text: `Your job has been posted and is now visible to professionals. ${documentInfo}`,
         confirmButtonColor: '#10b981',
         confirmButtonText: 'View My Projects',
         showCancelButton: true,
@@ -622,7 +633,6 @@ function JobPage() {
         if (result.isConfirmed) {
           navigate('/client-project');
         } else if (result.dismiss === Swal.DismissReason.cancel) {
-          // Stay on the page to post another job
           window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
           navigate('/client-dashboard');
@@ -630,7 +640,17 @@ function JobPage() {
       });
     } catch (err) {
       console.error('Submit error:', err);
-      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to post job';
+      
+      // Enhanced error handling for file upload issues
+      let errorMessage = 'Failed to post job';
+      if (err.response?.data?.document) {
+        errorMessage = `Document upload error: ${err.response.data.document[0]}`;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
       setError(errorMessage);
       setLoading(false);
       
@@ -716,12 +736,12 @@ function JobPage() {
                     rows={6}
                   />
 
-                  {/* File Upload Component */}
+                  {/* CHANGED: Updated error prop to use 'document' instead of 'attachment' */}
                   <FileUpload
                     onFileSelect={handleFileSelect}
                     selectedFile={selectedFile}
-                    error={errors.attachment}
-                    help="Upload project requirements, mockups, or reference documents to help professionals understand your needs better"
+                    error={errors.document}
+                    help="Upload project requirements, mockups, or reference documents. Files will be stored securely in Cloudinary."
                   />
 
                   <FormField
